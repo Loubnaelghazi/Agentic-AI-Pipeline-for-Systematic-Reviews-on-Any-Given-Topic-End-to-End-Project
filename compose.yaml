@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: .
+      args:
+        APP_UID: ${LOCAL_UID:-1000}
+        APP_GID: ${LOCAL_GID:-1000}
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATA_DIR: /data
+      OLLAMA_REQUEST_TIMEOUT: ${OLLAMA_REQUEST_TIMEOUT:-300}
+      OLLAMA_RETRY_ATTEMPTS: ${OLLAMA_RETRY_ATTEMPTS:-2}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-8192}
+      RERANK_ENABLED: ${RERANK_ENABLED:-true}
+      AI_PLANNER_ENABLED: ${AI_PLANNER_ENABLED:-true}
+      OPENALEX_API_KEY: ${OPENALEX_API_KEY:-}
+      OLLAMA_AUDIT_REASONING: ${OLLAMA_AUDIT_REASONING:-true}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
+      EMBEDDING_NUM_GPU: ${EMBEDDING_NUM_GPU:-0}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-qwen3-embedding:0.6b}
+      OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
+    extra_hosts:
+      - "host.docker.internal:${OLLAMA_HOST_ADDRESS:-host-gateway}"
+    volumes:
+      - ./data:/data
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped

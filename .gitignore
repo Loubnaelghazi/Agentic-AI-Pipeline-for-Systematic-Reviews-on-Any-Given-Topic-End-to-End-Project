@@ -1,0 +1,64 @@
+
+# Secrets and local configuration (keep documented examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+.aws/
+.codex/
+*.pem
+*.key
+
+# Python environments and generated files
+.venv/
+.venv-*/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+build/
+dist/
+
+# JavaScript dependencies and build output
+node_modules/
+*.tsbuildinfo
+coverage/
+.vite/
+
+# Research workspaces, vector indexes and local databases
+/data/
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Runtime logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Commit uv.lock and frontend/package-lock.json for reproducible installs.
+
+# Local pre-integration backups (may contain private research data)
+.local-backups/
