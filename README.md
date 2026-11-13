@@ -30,10 +30,8 @@ The main output is a **scientific manuscript about the research topic**. A separ
 14. [Persistence and reproducibility](#14-persistence-and-reproducibility)
 15. [Local development and CLI](#15-local-development-and-cli)
 16. [Repository structure](#16-repository-structure)
-17. [Troubleshooting](#17-troubleshooting)
-18. [Scope and limitations](#18-scope-and-limitations)
-19. [Academic deliverables](#19-academic-deliverables)
-20. [References](#20-references)
+17. [Scope and limitations](#18-scope-and-limitations)
+18. [References](#20-references)
 
 ## 1. Project purpose
 
@@ -709,24 +707,6 @@ agentic-review/
 └── README.md               # Project description, setup, user guide, and evaluation
 ```
 
-## 17. Troubleshooting
-
-| Symptom | Check and next action |
-| --- | --- |
-| Docker is unavailable in WSL | Start Docker Desktop and enable integration for the intended WSL distribution. Check `docker info`. |
-| API responds but processing fails | Open `/api/runtime`; check model availability and the container-to-Ollama address. |
-| Model is missing | Run `ollama list`, pull the configured model, and refresh runtime diagnostics. |
-| Processing is slow | Inspect the current operation and `ollama ps`. CPU inference, model loading, long PDFs, audits, and reranking can increase latency. |
-| Old code appears after edits | Wait for workflows to stop, then rebuild with `docker compose up -d --build --wait`. Restarting alone does not rebuild an image. |
-| Review files disappear after WSL restart | Check the host `data/` directory and the backend bind mount. Use the startup helper for the supported private WSL setup. |
-| A PDF is unavailable | Inspect the acquisition outcome. Abstract availability does not guarantee open full-text access. |
-| Eligibility is uncertain | Read the criterion, source passages, and audit notes. It can reflect missing evidence or disagreement, not necessarily a model outage. |
-| Guided review does not advance | Finish pending item decisions, then confirm the current phase. Check the Activity log. |
-| A job is queued | The local worker processes one review at a time. Wait for the active review or pause it safely. |
-| Writing is incomplete | Inspect section checks and quality notes. Once sources and Ollama are available, resume unfinished writing; verified sections can be reused. |
-| Backend cannot write review files | Check bind-mount ownership and image `LOCAL_UID`/`LOCAL_GID` settings. |
-| Word report is historical | Resolve pending changes and resume reporting before treating the export as current. |
-
 Useful commands:
 
 ```bash
@@ -737,7 +717,7 @@ ollama list
 ollama ps
 ```
 
-## 18. Scope and limitations
+## 17. Scope and limitations
 
 - Search coverage depends on the selected databases, queries, years, API responses, and record limits. No exhaustive-search guarantee is made.
 - Source connectors currently cover OpenAlex, PubMed, and arXiv. Other databases require additional integration.
@@ -749,53 +729,8 @@ ollama ps
 - Automatic writing produces a scientific draft; author verification is required before academic or publication use.
 - The application is designed for a local, single-user deployment. Authentication and distributed job coordination are outside the current scope.
 
-## 19. Academic deliverables
 
-This repository provides source code, locked dependency definitions, Docker builds, a configurable review protocol, a browser user guide, and evaluation utilities.
-
-### Mapping to the project requirements
-
-| Project requirement | Implementation and documentation |
-| --- | --- |
-| Modular multi-agent architecture | Specialized roles in `agents/`; orchestration explained in Sections 3–5 |
-| LangChain / LangGraph integration | Structured local model calls and the stateful Guided graph |
-| Configurable review protocol | Question, criteria, concepts, dates, sources, fields, and appraisal domains |
-| Multiple scientific sources | OpenAlex, PubMed, and arXiv retrieval with recorded provenance |
-| Simulated dual screening | Two blinded model roles, criterion mapping, and disagreement handling |
-| Grounded extraction and advanced RAG | Hybrid retrieval, optional reranking, context compression, quotations, and source pages |
-| Quality and bias assessment | Configurable domain proposals, Guided human assessments, and scientific criticism; instrument scope explained in Section 11 |
-| Synthesis and final manuscript | Scientific narrative, tables, selection figure, citations, and Markdown/Word exports |
-| Human oversight with automation | Guided review gates and an Automated draft mode with a final decision |
-| Persistent memory and observability | Checkpoints, decision histories, source/model fingerprints, logs, and stage timings |
-| Reproducible installation | Docker definitions, dependency lockfiles, and configuration example |
-| Completeness, accuracy, consistency, and efficiency evaluation | Human-reference procedure, metric definitions, and executable tools in Section 12 |
-
-### Submission package
-
-| Deliverable | Suggested evidence |
-| --- | --- |
-| End-to-end demonstration | One real question, saved search and selection records, source evidence, and final exported manuscript |
-| Scientific evaluation | Human annotations, benchmark JSON, sample description, measured timings, and interpretation of errors |
-| Technical report | Architecture, design choices, methods, implementation, evaluation, limitations, and individual contribution |
-| User documentation | Installation, configuration, workflow, outputs, and troubleshooting sections of this README |
-| Demonstration video | A recording of at most three minutes showing setup readiness, a review workflow, source verification, and final outputs |
-
-The generated technical report documents a particular review run. The academic project report explains the software project and its evaluation; these serve different purposes.
-
-### Three-minute demonstration outline
-
-| Time | What to show |
-| --- | --- |
-| 0:00–0:20 | State the research question and show that the interface, API, and local models are available. |
-| 0:20–0:50 | Explain the two modes and show the protocol, source choices, criteria, and date range. |
-| 0:50–1:25 | Open a saved review, inspect screening reasons, and verify an evidence quotation in the original PDF. |
-| 1:25–2:10 | Show the scientific manuscript, a research table, the selection figure, references, and the Word download. |
-| 2:10–2:40 | Show the separate technical report and explain how human-reference metrics are calculated. |
-| 2:40–3:00 | Explain the final review decision and the main methodological limitations. |
-
-Use a completed saved review for stages that take longer than the video. Clearly distinguish the live interface from previously computed results.
-
-## 20. References
+## 18. References
 
 - [PRISMA 2020 checklist](https://www.prisma-statement.org/prisma-2020-checklist) — reporting guidance; exported diagram attribution is retained.
 - [LangGraph documentation](https://docs.langchain.com/oss/python/langgraph/overview) — stateful workflow orchestration.
