@@ -26,13 +26,10 @@ The main output is a **scientific manuscript about the research topic**. A separ
 10. [Reports and exported files](#10-reports-and-exported-files)
 11. [Evidence checks and PRISMA reporting](#11-evidence-checks-and-prisma-reporting)
 12. [Evaluation methodology and metrics](#12-evaluation-methodology-and-metrics)
-13. [Software tests](#13-software-tests)
-14. [Persistence and reproducibility](#14-persistence-and-reproducibility)
-15. [Local development and CLI](#15-local-development-and-cli)
-16. [Repository structure](#16-repository-structure)
-17. [Scope and limitations](#17-scope-and-limitations)
-18. [Conclusion](#18-conclusion)
-19. [References](#19-references)
+13. [Repository structure](#13-repository-structure)
+14. [Scope and limitations](#14-scope-and-limitations)
+15. [Conclusion](#15-conclusion)
+16. [References](#16-references)
 
 ## 1. Project purpose
 
@@ -550,14 +547,14 @@ Academic discovery finds **papers**. RAG finds **passages inside the acquired pa
 
 Python and Node do not need to be installed on the host for the Docker application. Ollama runs separately on the host in this Compose setup.
 
-### Step 1 — Clone the repository
+### Step 1 : Clone the repository
 
 ```bash
 git clone https://github.com/Loubnaelghazi/Agentic-AI-Pipeline-for-Systematic-Reviews-on-Any-Given-Topic-End-to-End-Project.git agentic-review
 cd agentic-review
 ```
 
-### Step 2 — Create the configuration
+### Step 2 : Create the configuration
 
 On a fresh clone:
 
@@ -567,7 +564,7 @@ cp .env.example .env
 
 For an existing installation, keep the current `.env` and compare it with [.env.example](.env.example). Do not commit `.env` or API keys.
 
-### Step 3 — Prepare Ollama
+### Step 3 : Prepare Ollama
 
 Install and start [Ollama](https://docs.ollama.com/quickstart), then download the default models:
 
@@ -810,7 +807,7 @@ These checks reduce identifiable errors. Exact source matching alone does not es
 
 The planner can propose a general, prediction-model, or diagnostic-accuracy rubric. Users can edit the domains in the protocol. Machine proposals use `low`, `high`, or `unclear` judgements with source support; missing support and disagreement remain unclear.
 
-These are **project-defined rubrics**, not full implementations of validated clinical instruments. A formal risk-of-bias assessment requires an appropriate instrument and researcher review. Prediction-model and diagnostic-study guidance are linked in the [references](#19-references).
+These are **project-defined rubrics**, not full implementations of validated clinical instruments. A formal risk-of-bias assessment requires an appropriate instrument and researcher review. Prediction-model and diagnostic-study guidance are linked in the [references](#16-references).
 
 ### PRISMA-oriented reporting
 
@@ -940,100 +937,9 @@ docker compose exec backend python -m evaluation.meta_analysis \
 
 Input columns are `study_id`, `outcome`, `effect_measure`, `comparison_group`, `human_verified`, `effect`, and `standard_error`. All rows must use compatible definitions and an appropriate common analysis scale. This optional utility is not a complete meta-analysis workflow.
 
-## 13. Software tests
 
-The regression suite covers both workflow modes, confirmation gates, source quotations, eligibility audits, appraisal failure cases, scientific writing, numerical values, export presentation, PRISMA counts, API behaviour, and recovery from interrupted operations.
 
-For a local development environment:
-
-```bash
-uv sync --frozen
-uv run python -m unittest discover -s tests -v
-uv run ruff check agents rag workflow methodology evaluation api scripts tests config.py
-uv run ruff format --check agents rag workflow methodology evaluation api scripts tests config.py
-```
-
-Frontend checks:
-
-```bash
-cd frontend
-npm ci
-npm test
-npm run build
-```
-
-The frontend suite includes conversation flow, pending decisions, report rendering, PDF controls, configuration, and the static HTTP server. The production build also checks TypeScript.
-
-Backend runtime images contain production dependencies, not the test suite or Ruff. Run backend regression tests from a development checkout. Test fixtures simulate model/API responses where appropriate; real model and source availability are checked separately through `/api/runtime` and an end-to-end review.
-
-For a full demonstration, verify both modes, original PDF access, evidence-to-source links, report downloads, and persistence after restart. Save the exact test command, date, revision, and output when reporting test results. Scientific evaluation metrics come from the human-reference procedure above, not from the software test pass rate.
-
-## 14. Persistence and reproducibility
-
-```text
-data/
-└── reviews/
-    └── REVIEW_ID/
-        ├── topic.txt
-        ├── protocol.json
-        ├── papers.json
-        ├── workflow_state.json
-        ├── papers/                 # Acquired PDFs and extracted text
-        ├── indexes/                # Model-specific Chroma indexes
-        └── outputs/
-            ├── ...                # Reports, decisions, evidence, and quality files
-            ├── history/           # Archived outputs before invalidation
-            └── runs/              # Worker logs
-```
-
-The `./data:/data` bind mount keeps review files outside container images. Stopping, recreating, or rebuilding containers preserves this host directory. Back it up before moving or manually changing research records.
-
-Decision and protocol fingerprints help detect stale approvals. Relevant changes invalidate dependent outputs while retaining reusable acquisition and extraction work. The explicit generation-model migration also archives prior results and invalidates model-dependent proposals. It is blocked while that review is running.
-
-A restart can interrupt a worker. Resume from the interface after Docker and Ollama are reachable. A saved checkpoint improves recovery; it does not guarantee byte-identical regeneration. Model updates, inference behaviour, and changing academic databases can affect later runs.
-
-`.env`, review data, model audits, local backups, caches, and generated build output are excluded from Git. A fresh clone contains the implementation and configuration example, not private review workspaces or preinstalled models.
-
-## 15. Local development and CLI
-
-Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node.js 20.19+ with a Vite-compatible release, npm, and Ollama.
-
-Backend:
-
-```bash
-uv sync --frozen
-uv run uvicorn api.app:app --host 127.0.0.1 --port 8000
-```
-
-Frontend, in a second terminal:
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173). Configure `OLLAMA_BASE_URL` for the host Python process. The development browser API address is defined in `frontend/public/config.js`.
-
-### CLI entry points
-
-```bash
-# Create a Guided review from the command line.
-uv run python main.py --topic "Your research question"
-
-# Resume an existing review in its saved mode.
-uv run python main.py --review-id REVIEW_ID
-
-# Inspect human review tasks.
-uv run python human_review.py REVIEW_ID
-
-# Inspect the protocol.
-uv run python -m methodology.protocol show REVIEW_ID
-```
-
-The CLI enforces the same review prerequisites. Phase confirmations are available in the browser. Do not run a CLI writer while the API is processing or editing the same review.
-
-## 16. Repository structure
+## 13. Repository structure
 
 ```text
 agentic-review/
@@ -1070,7 +976,7 @@ ollama list
 ollama ps
 ```
 
-## 17. Scope and limitations
+## 14. Scope and limitations
 
 - Search coverage depends on the selected databases, queries, years, API responses, and record limits. No exhaustive-search guarantee is made.
 - Source connectors currently cover OpenAlex, PubMed, and arXiv. Other databases require additional integration.
@@ -1082,7 +988,7 @@ ollama ps
 - Automatic writing produces a scientific draft; author verification is required before academic or publication use.
 - The application is designed for a local, single-user deployment. Authentication and distributed job coordination are outside the current scope.
 
-## 18. Conclusion
+## 15. Conclusion
 
 Folio brings the main stages of a systematic literature review into one traceable workflow: protocol definition, academic search, screening, source extraction, appraisal, synthesis, scientific writing, and export. Guided mode makes researcher decisions explicit, while Automated draft mode prepares a draft without intermediate human approvals. Both modes preserve source evidence and execution records.
 
@@ -1092,7 +998,7 @@ The evaluation framework connects the implementation to measurable criteria: scr
 
 The project's contribution is an inspectable, resumable environment for AI-assisted review preparation. Its scientific reliability depends on the protocol, search coverage, available texts, evidence checks, and researcher judgement. This defines both the practical value of the system and the boundaries within which its outputs should be interpreted.
 
-## 19. References
+## 16. References
 
 - [PRISMA 2020 checklist](https://www.prisma-statement.org/prisma-2020-checklist) — reporting guidance; exported diagram attribution is retained.
 - [LangGraph documentation](https://docs.langchain.com/oss/python/langgraph/overview) — stateful workflow orchestration.
