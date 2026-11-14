@@ -329,81 +329,69 @@ Sources: [api/jobs.py](api/jobs.py), [workflow/state.py](workflow/state.py), [ag
 
 The Guided graph uses `ReviewState`; the automatic runner persists a dictionary with additional mode-specific fields. Both runners use saved state to reuse completed work.
 
-### 3.5 Sequence diagram: interactions between implemented components
+### 3.5 UML sequence diagram: start a review job
 
-The lifelines below represent components that execute in Folio. The researcher interacts with the **Folio Web Application**, which calls the **Review API**. Framework names describe how those components are implemented; they are not independent actors.
+**Scenario:** start a background review and inspect its execution status. The review exists, its current protocol is approved, and there is work to process. The scientific stages executed inside the worker are described separately in Sections 4 and 5.
+
+The lifelines use UML **`objectName:ClassName`** notation. Each class below is present in the implementation or imported from a framework or the Python standard library. There is no generic participant named “Interface”, “System”, or “Controller”.
 
 ```mermaid
 sequenceDiagram
     actor Researcher
-    participant WebApp as Folio Web Application
-    participant ReviewAPI as Review API
-    participant Jobs as JobManager
-    participant Workflow as Guided Workflow Coordinator
-    participant Stage as Current Review Stage
-    participant Sources as Academic Sources
-    participant Inference as Local Inference Service
-    participant Storage as Review Storage
+    participant App as app:FastAPI
+    participant Jobs as jobs:JobManager
+    participant Executor as executor:ThreadPoolExecutor
 
-    Researcher->>WebApp: Start or resume an approved review
-    WebApp->>ReviewAPI: POST /api/reviews/{id}/run
-    ReviewAPI->>Jobs: start(review_id)
-    Jobs-->>ReviewAPI: Job identifier and queued status
-    ReviewAPI-->>WebApp: 202 Accepted
-    par Execute the processing phase
-        Jobs->>Workflow: Launch review subprocess and run_review(review_id)
-        Workflow->>Storage: Load protocol and checkpoint
-        Storage-->>Workflow: Saved review state
-        Workflow->>Stage: Execute the current stage
-        opt Stage requires academic retrieval
-            Stage->>Sources: Search records or request full text
-            Sources-->>Stage: Records, full text, or access failure
+    Researcher->>App: POST /api/reviews/{review_id}/run
+    Note over App: Registered route callback: run(review_id)
+    App->>Jobs: start(review_id)
+    Jobs->>Jobs: mutation(review_id)
+    Note over Jobs: Check locks, confirmations, and saved state
+    alt Review busy or required phase not confirmed
+        Jobs-->>App: Raise BusyReview
+        App-->>Researcher: HTTP 409 with explanation
+    else Review can start
+        Note over Jobs: Create job dictionary and persist queued status
+        Jobs->>Executor: submit(self._run, review_id)
+        Executor-->>Jobs: Future
+        par Return the HTTP acknowledgement
+            Jobs-->>App: dict(job)
+            App-->>Researcher: HTTP 202 with job identifier
+        and Execute the submitted task
+            Executor->>Jobs: _run(review_id)
+            Jobs->>Jobs: lock(review_id)
+            Note over Jobs: Set job status to running and open run log
+            create participant Process as process:Popen
+            Jobs->>Process: Popen(command, cwd, env, stdout, stderr)
+            Note over Process: Execute main.py --review-id review_id
+            Jobs->>Process: wait()
+            Process-->>Jobs: Process exit code
+            Note over Jobs: Read workflow checkpoint and update job dictionary<br/>Persist status, workflow_status, exit_code, and finished_at
         end
-        opt Stage requires model inference
-            Stage->>Inference: Prompt, output schema, and source context
-            Inference-->>Stage: Structured model proposal
-            Stage->>Stage: Check source support and output constraints
-        end
-        Stage-->>Workflow: Stage results
-        Workflow->>Storage: Save outputs, trace, and confirmation state
-        Workflow-->>Jobs: Processing phase ends at the human review gate
-    and Refresh progress in the browser
-        loop While the processing phase is running
-            WebApp->>ReviewAPI: GET /api/reviews/{id}
-            ReviewAPI->>Storage: Read progress and checkpoint
-            Storage-->>ReviewAPI: Current review state
-            ReviewAPI-->>WebApp: Progress and available artifacts
+        loop Client checks execution status
+            Researcher->>App: GET /api/reviews/{review_id}/run
+            Note over App: Registered route callback: run_status(review_id)
+            App->>Jobs: status(review_id)
+            Jobs-->>App: Job dictionary and available log
+            App-->>Researcher: HTTP 200 with execution status
         end
     end
-    WebApp->>ReviewAPI: GET /api/reviews/{id}
-    ReviewAPI-->>WebApp: Pending decisions and phase confirmation token
-    Researcher->>WebApp: Read source material and save required decisions
-    WebApp->>ReviewAPI: Submit item decisions
-    ReviewAPI->>Storage: Append validated decision events
-    ReviewAPI-->>WebApp: Decisions recorded
-    Researcher->>WebApp: Confirm and continue
-    WebApp->>ReviewAPI: POST /api/reviews/{id}/confirm-step
-    ReviewAPI->>ReviewAPI: Validate token, protocol, and pending decisions
-    ReviewAPI->>Storage: Save phase confirmation
-    ReviewAPI-->>WebApp: Confirmation recorded
-    WebApp->>ReviewAPI: POST /api/reviews/{id}/run
 ```
 
-*Figure 5. Component interactions during a successful Guided processing phase. The parallel fragment separates background execution from browser polling. Required item decisions precede the phase confirmation. This sequence assumes that usable work remains; an empty selection stops with the outcome described in Section 5.*
+*Figure 5. Object-level interactions for starting and monitoring a review job. The researcher sends requests through a browser; the web presentation is omitted to focus on backend object interactions. The parallel fragment shows that the HTTP response does not wait for the review process to finish.*
 
-| Lifeline | Actual implementation | Responsibility in the sequence |
+| Lifeline | Actual class and instance | Operations shown |
 | --- | --- | --- |
-| Researcher | Person using Folio | Reviews sources and records scientific decisions |
-| Folio Web Application | [App.tsx](frontend/src/App.tsx), [Conversation.tsx](frontend/src/components/Conversation.tsx) | Displays the conversation and sends explicit user actions |
-| Review API | `app` created by `create_app()` in [api/app.py](api/app.py) | Handles HTTP requests, validation, and artifact access; implemented with FastAPI |
-| JobManager | `JobManager` in [api/jobs.py](api/jobs.py) | Queues work, controls concurrency, and launches the review subprocess |
-| Guided Workflow Coordinator | `run_review()` and the graph in [workflow/graph.py](workflow/graph.py), launched by [main.py](main.py) | Loads state, schedules stages, and stops at review gates |
-| Current Review Stage | The selected function in [workflow/nodes.py](workflow/nodes.py), using the specialized modules in `agents/` and `tools/` | Performs the stage-specific work; this label denotes a running stage, not a class named `CurrentReviewStage` |
-| Academic Sources | OpenAlex, PubMed, arXiv, and the selected full-text providers | Return bibliographic records or documents |
-| Local Inference Service | Host Ollama API, called through [agents/client.py](agents/client.py) | Runs the configured local generation model; retrieval also uses its embedding API |
-| Review Storage | JSON, PDF, text, and index files under `data/reviews/REVIEW_ID/` | Preserves evidence, progress, decisions, and generated artifacts |
+| `app:FastAPI` | The `app` application object created by `create_app()` in [api/app.py](api/app.py) | Receives HTTP requests and dispatches the registered `run()` and `run_status()` route callbacks |
+| `jobs:JobManager` | The `JobManager` instance created or supplied to `create_app()` | `start()`, `mutation()`, `_run()`, `lock()`, and `status()` in [api/jobs.py](api/jobs.py) |
+| `executor:ThreadPoolExecutor` | The object stored in `jobs.executor`, created with `max_workers=1` | `submit(self._run, review_id)` schedules the bound method for execution |
+| `process:Popen` | The child-process object constructed inside `JobManager._run()` | `Popen(...)` creates the subprocess; `wait()` obtains its exit code |
 
-The view is a **component-level sequence**, not a class-level call trace. The class diagrams above show the actual Python schemas and service class. React implements the web component, FastAPI implements the API component, and Ollama supplies the local inference service.
+**Reading the notation:** `jobs` is the object name and `JobManager` is its class. `FastAPI`, `ThreadPoolExecutor`, and `Popen` are concrete imported classes, not invented project entities. The job record is a Python dictionary; the design does not introduce a nonexistent `Job` class.
+
+The HTTP route callbacks are functions registered on `app`; `run()` and `run_status()` are not presented as methods declared by the `FastAPI` class. The browser also obtains job information through the review-details endpoint; the dedicated `/run` endpoint is used here to isolate the status-query scenario. Status queries may occur while the subprocess runs or after it exits; the diagram shows one polling loop without expanding every interleaving.
+
+Context managers handle locks through `mutation()` and `lock()`. Their internal `__enter__`/`__exit__` calls, file I/O helpers, and framework request validation are omitted for readability. `_run()` is an internal method invoked by the executor, not a public HTTP operation.
 
 The workflow is a predefined sequence with conditional review gates. It does not freely invent a new execution plan for every question. API validation errors leave the current phase unchanged. Model or source failures are logged. Completed checkpoints and usable partial results are retained for resume; unfinished operations may be retried.
 
