@@ -329,69 +329,91 @@ Sources: [api/jobs.py](api/jobs.py), [workflow/state.py](workflow/state.py), [ag
 
 The Guided graph uses `ReviewState`; the automatic runner persists a dictionary with additional mode-specific fields. Both runners use saved state to reuse completed work.
 
-### 3.5 UML sequence diagram: start a review job
+### 3.5 Sequence diagram: a Guided systematic review
 
-**Scenario:** start a background review and inspect its execution status. The review exists, its current protocol is approved, and there is work to process. The scientific stages executed inside the worker are described separately in Sections 4 and 5.
-
-The lifelines use UML **`objectName:ClassName`** notation. Each class below is present in the implementation or imported from a framework or the Python standard library. There is no generic participant named “Interface”, “System”, or “Controller”.
+This diagram presents the review process through its research participants and specialized agent roles. It follows a Guided review from the research question to the final manuscript, including the researcher's decisions.
 
 ```mermaid
 sequenceDiagram
     actor Researcher
-    participant App as app:FastAPI
-    participant Jobs as jobs:JobManager
-    participant Executor as executor:ThreadPoolExecutor
+    participant Coordinator as Review Coordinator
+    participant Search as Search Strategy Agent
+    participant Retrieval as Retrieval Agent
+    participant Screening as Screening Agents
+    participant Evidence as Extraction and Appraisal Agent
+    participant Writing as Synthesis and Writing Agent
+    participant Critic as Critic Agent
 
-    Researcher->>App: POST /api/reviews/{review_id}/run
-    Note over App: Registered route callback: run(review_id)
-    App->>Jobs: start(review_id)
-    Jobs->>Jobs: mutation(review_id)
-    Note over Jobs: Check locks, confirmations, and saved state
-    alt Review busy or required phase not confirmed
-        Jobs-->>App: Raise BusyReview
-        App-->>Researcher: HTTP 409 with explanation
-    else Review can start
-        Note over Jobs: Create job dictionary and persist queued status
-        Jobs->>Executor: submit(self._run, review_id)
-        Executor-->>Jobs: Future
-        par Return the HTTP acknowledgement
-            Jobs-->>App: dict(job)
-            App-->>Researcher: HTTP 202 with job identifier
-        and Execute the submitted task
-            Executor->>Jobs: _run(review_id)
-            Jobs->>Jobs: lock(review_id)
-            Note over Jobs: Set job status to running and open run log
-            create participant Process as process:Popen
-            Jobs->>Process: Popen(command, cwd, env, stdout, stderr)
-            Note over Process: Execute main.py --review-id review_id
-            Jobs->>Process: wait()
-            Process-->>Jobs: Process exit code
-            Note over Jobs: Read workflow checkpoint and update job dictionary<br/>Persist status, workflow_status, exit_code, and finished_at
-        end
-        loop Client checks execution status
-            Researcher->>App: GET /api/reviews/{review_id}/run
-            Note over App: Registered route callback: run_status(review_id)
-            App->>Jobs: status(review_id)
-            Jobs-->>App: Job dictionary and available log
-            App-->>Researcher: HTTP 200 with execution status
-        end
+    Researcher->>Coordinator: Submit a research question
+    Coordinator-->>Researcher: Propose the review protocol
+    Researcher->>Coordinator: Approve the scope and eligibility criteria
+
+    Coordinator->>Search: Design the search strategy
+    Search-->>Coordinator: Return queries and search terms
+    Coordinator->>Retrieval: Search the selected academic sources
+    Retrieval-->>Coordinator: Return records, duplicates, and coverage notes
+    Coordinator-->>Researcher: Present the search results
+    Researcher->>Coordinator: Confirm the search results
+
+    Coordinator->>Screening: Assess titles and abstracts
+    Screening-->>Coordinator: Propose inclusion or exclusion with reasons
+    Coordinator-->>Researcher: Present screening decisions for review
+    Researcher->>Coordinator: Record decisions and confirm selection
+    break No records remain after screening
+        Coordinator-->>Researcher: Stop and provide a selection report
     end
+
+    Coordinator->>Retrieval: Retrieve the retained full texts
+    Retrieval-->>Coordinator: Return available texts and access gaps
+    break No retained full text is available
+        Coordinator-->>Researcher: Stop and explain the access gaps
+    end
+
+    Coordinator->>Screening: Assess full-text eligibility
+    Screening-->>Coordinator: Return recommendations and supporting passages
+    Coordinator-->>Researcher: Request full-text eligibility decisions
+    Researcher->>Coordinator: Confirm eligible reports and exclusion reasons
+    break No eligible report remains
+        Coordinator-->>Researcher: Stop and provide a selection report
+    end
+
+    Coordinator->>Retrieval: Index the source passages for evidence retrieval
+    Retrieval-->>Coordinator: Confirm the evidence index is available
+    Coordinator->>Evidence: Extract source-linked findings and study details
+    Evidence-->>Coordinator: Return quotations, tables, and source locations
+    Coordinator-->>Researcher: Present the extracted evidence
+    Researcher->>Coordinator: Approve or reject the evidence items
+    break No evidence is approved for synthesis
+        Coordinator-->>Researcher: Stop before scientific writing
+    end
+
+    Coordinator->>Evidence: Prepare study appraisal proposals
+    Evidence-->>Coordinator: Return domain proposals and supporting passages
+    Coordinator-->>Researcher: Request study quality assessments
+    Researcher->>Coordinator: Record and confirm the study assessments
+
+    Coordinator->>Writing: Synthesize approved evidence and draft the review
+    Writing-->>Coordinator: Return the source-checked manuscript and tables
+    Coordinator->>Critic: Review scientific support and consistency
+    Critic-->>Coordinator: Return quality findings and recommendations
+    Coordinator-->>Researcher: Present manuscript, quality findings, and technical report
+    Researcher->>Coordinator: Review the reporting checklist and validate the draft
 ```
 
-*Figure 5. Object-level interactions for starting and monitoring a review job. The researcher sends requests through a browser; the web presentation is omitted to focus on backend object interactions. The parallel fragment shows that the HTTP response does not wait for the review process to finish.*
+*Figure 5. Functional sequence for a Guided systematic review. Participants represent the research roles defined in the project. Messages describe their responsibilities and deliverables. A `break` fragment ends the process when there is no usable selection or approved evidence.*
 
-| Lifeline | Actual class and instance | Operations shown |
-| --- | --- | --- |
-| `app:FastAPI` | The `app` application object created by `create_app()` in [api/app.py](api/app.py) | Receives HTTP requests and dispatches the registered `run()` and `run_status()` route callbacks |
-| `jobs:JobManager` | The `JobManager` instance created or supplied to `create_app()` | `start()`, `mutation()`, `_run()`, `lock()`, and `status()` in [api/jobs.py](api/jobs.py) |
-| `executor:ThreadPoolExecutor` | The object stored in `jobs.executor`, created with `max_workers=1` | `submit(self._run, review_id)` schedules the bound method for execution |
-| `process:Popen` | The child-process object constructed inside `JobManager._run()` | `Popen(...)` creates the subprocess; `wait()` obtains its exit code |
+| Participant | Responsibility |
+| --- | --- |
+| Researcher | Defines the question, reviews evidence, and records the required scientific decisions |
+| Review Coordinator | Organizes the stages, preserves progress, and requests human validation |
+| Search Strategy Agent | Prepares source-specific queries from the review protocol |
+| Retrieval Agent | Searches scientific sources, handles full-text acquisition, and builds the evidence index |
+| Screening Agents | Assess titles, abstracts, and full texts against the eligibility criteria |
+| Extraction and Appraisal Agent | Extracts traceable study evidence and prepares source-supported quality proposals |
+| Synthesis and Writing Agent | Organizes approved findings and produces the scientific manuscript |
+| Critic Agent | Checks the manuscript for support, consistency, omissions, and overgeneralization |
 
-**Reading the notation:** `jobs` is the object name and `JobManager` is its class. `FastAPI`, `ThreadPoolExecutor`, and `Popen` are concrete imported classes, not invented project entities. The job record is a Python dictionary; the design does not introduce a nonexistent `Job` class.
-
-The HTTP route callbacks are functions registered on `app`; `run()` and `run_status()` are not presented as methods declared by the `FastAPI` class. The browser also obtains job information through the review-details endpoint; the dedicated `/run` endpoint is used here to isolate the status-query scenario. Status queries may occur while the subprocess runs or after it exits; the diagram shows one polling loop without expanding every interleaving.
-
-Context managers handle locks through `mutation()` and `lock()`. Their internal `__enter__`/`__exit__` calls, file I/O helpers, and framework request validation are omitted for readability. `_run()` is an internal method invoked by the executor, not a public HTTP operation.
+The participant names follow the agent roles in the project specification. Some roles are implemented by several cooperating modules, as documented in Section 4. The separate class diagrams show the implementation structures; this sequence focuses on the research workflow and its human decisions.
 
 The workflow is a predefined sequence with conditional review gates. It does not freely invent a new execution plan for every question. API validation errors leave the current phase unchanged. Model or source failures are logged. Completed checkpoints and usable partial results are retained for resume; unfinished operations may be retried.
 
