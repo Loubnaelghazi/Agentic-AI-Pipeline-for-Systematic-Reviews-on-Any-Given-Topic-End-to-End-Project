@@ -496,14 +496,14 @@ Academic discovery finds **papers**. RAG finds **passages inside the acquired pa
 
 Python and Node do not need to be installed on the host for the Docker application. Ollama runs separately on the host in this Compose setup.
 
-### Step 1 — Clone the repository
+### Step 1 : Clone the repository
 
 ```bash
 git clone https://github.com/Loubnaelghazi/Agentic-AI-Pipeline-for-Systematic-Reviews-on-Any-Given-Topic-End-to-End-Project.git agentic-review
 cd agentic-review
 ```
 
-### Step 2 — Create the configuration
+### Step 2 : Create the configuration
 
 On a fresh clone:
 
@@ -513,7 +513,7 @@ cp .env.example .env
 
 For an existing installation, keep the current `.env` and compare it with [.env.example](.env.example). Do not commit `.env` or API keys.
 
-### Step 3 — Prepare Ollama
+### Step 3 : Prepare Ollama
 
 Install and start [Ollama](https://docs.ollama.com/quickstart), then download the default models:
 
