@@ -329,56 +329,81 @@ Sources: [api/jobs.py](api/jobs.py), [workflow/state.py](workflow/state.py), [ag
 
 The Guided graph uses `ReviewState`; the automatic runner persists a dictionary with additional mode-specific fields. Both runners use saved state to reuse completed work.
 
-### 3.5 Sequence diagram: a Guided processing phase
+### 3.5 Sequence diagram: interactions between implemented components
+
+The lifelines below represent components that execute in Folio. The researcher interacts with the **Folio Web Application**, which calls the **Review API**. Framework names describe how those components are implemented; they are not independent actors.
 
 ```mermaid
 sequenceDiagram
     actor Researcher
-    participant UI as React interface
-    participant API as FastAPI
+    participant WebApp as Folio Web Application
+    participant ReviewAPI as Review API
     participant Jobs as JobManager
-    participant Worker as Review subprocess
-    participant Sources as Academic services
-    participant Model as Ollama
-    participant Store as Review files
+    participant Workflow as Guided Workflow Coordinator
+    participant Stage as Current Review Stage
+    participant Sources as Academic Sources
+    participant Inference as Local Inference Service
+    participant Storage as Review Storage
 
-    Researcher->>UI: Start or resume an approved review
-    UI->>API: POST /api/reviews/{id}/run
-    API->>Jobs: start(review_id)
-    Jobs-->>API: Job identifier and queued status
-    API-->>UI: 202 Accepted
-    Jobs->>Worker: Launch main.py with review_id
-    Worker->>Store: Read protocol and saved checkpoint
-    Store-->>Worker: Review state
-    opt Phase requires search or acquisition
-        Worker->>Sources: Search records or request full text
-        Sources-->>Worker: Results or recorded access failure
+    Researcher->>WebApp: Start or resume an approved review
+    WebApp->>ReviewAPI: POST /api/reviews/{id}/run
+    ReviewAPI->>Jobs: start(review_id)
+    Jobs-->>ReviewAPI: Job identifier and queued status
+    ReviewAPI-->>WebApp: 202 Accepted
+    par Execute the processing phase
+        Jobs->>Workflow: Launch review subprocess and run_review(review_id)
+        Workflow->>Storage: Load protocol and checkpoint
+        Storage-->>Workflow: Saved review state
+        Workflow->>Stage: Execute the current stage
+        opt Stage requires academic retrieval
+            Stage->>Sources: Search records or request full text
+            Sources-->>Stage: Records, full text, or access failure
+        end
+        opt Stage requires model inference
+            Stage->>Inference: Prompt, output schema, and source context
+            Inference-->>Stage: Structured model proposal
+            Stage->>Stage: Check source support and output constraints
+        end
+        Stage-->>Workflow: Stage results
+        Workflow->>Storage: Save outputs, trace, and confirmation state
+        Workflow-->>Jobs: Processing phase ends at the human review gate
+    and Refresh progress in the browser
+        loop While the processing phase is running
+            WebApp->>ReviewAPI: GET /api/reviews/{id}
+            ReviewAPI->>Storage: Read progress and checkpoint
+            Storage-->>ReviewAPI: Current review state
+            ReviewAPI-->>WebApp: Progress and available artifacts
+        end
     end
-    opt Phase requires model inference
-        Worker->>Model: Prompt, schema, and bounded source context
-        Model-->>Worker: Structured proposal
-        Worker->>Worker: Check source support and output constraints
-    end
-    Worker->>Store: Save outputs, trace, and confirmation state
-    Worker-->>Jobs: Exit at the Guided phase boundary
-    loop Refresh conversation status
-        UI->>API: GET /api/reviews/{id}
-        API->>Store: Read checkpoint and review queue
-        Store-->>API: Current artifacts and pending items
-        API-->>UI: Progress or validation card
-    end
-    Researcher->>UI: Review sources and save required decisions
-    UI->>API: Record item decisions
-    API->>Store: Append validated decision events
-    Researcher->>UI: Confirm and continue
-    UI->>API: POST /api/reviews/{id}/confirm-step
-    API->>API: Check token, protocol, and pending decisions
-    API->>Store: Save phase confirmation
-    API-->>UI: Confirmation recorded
-    UI->>API: POST /api/reviews/{id}/run
+    WebApp->>ReviewAPI: GET /api/reviews/{id}
+    ReviewAPI-->>WebApp: Pending decisions and phase confirmation token
+    Researcher->>WebApp: Read source material and save required decisions
+    WebApp->>ReviewAPI: Submit item decisions
+    ReviewAPI->>Storage: Append validated decision events
+    ReviewAPI-->>WebApp: Decisions recorded
+    Researcher->>WebApp: Confirm and continue
+    WebApp->>ReviewAPI: POST /api/reviews/{id}/confirm-step
+    ReviewAPI->>ReviewAPI: Validate token, protocol, and pending decisions
+    ReviewAPI->>Storage: Save phase confirmation
+    ReviewAPI-->>WebApp: Confirmation recorded
+    WebApp->>ReviewAPI: POST /api/reviews/{id}/run
 ```
 
-*Figure 5. Successful Guided phase transition. Item decisions are saved before phase confirmation. HTTP acceptance starts a background job; it does not mean the scientific stage has already finished.*
+*Figure 5. Component interactions during a successful Guided processing phase. The parallel fragment separates background execution from browser polling. Required item decisions precede the phase confirmation. This sequence assumes that usable work remains; an empty selection stops with the outcome described in Section 5.*
+
+| Lifeline | Actual implementation | Responsibility in the sequence |
+| --- | --- | --- |
+| Researcher | Person using Folio | Reviews sources and records scientific decisions |
+| Folio Web Application | [App.tsx](frontend/src/App.tsx), [Conversation.tsx](frontend/src/components/Conversation.tsx) | Displays the conversation and sends explicit user actions |
+| Review API | `app` created by `create_app()` in [api/app.py](api/app.py) | Handles HTTP requests, validation, and artifact access; implemented with FastAPI |
+| JobManager | `JobManager` in [api/jobs.py](api/jobs.py) | Queues work, controls concurrency, and launches the review subprocess |
+| Guided Workflow Coordinator | `run_review()` and the graph in [workflow/graph.py](workflow/graph.py), launched by [main.py](main.py) | Loads state, schedules stages, and stops at review gates |
+| Current Review Stage | The selected function in [workflow/nodes.py](workflow/nodes.py), using the specialized modules in `agents/` and `tools/` | Performs the stage-specific work; this label denotes a running stage, not a class named `CurrentReviewStage` |
+| Academic Sources | OpenAlex, PubMed, arXiv, and the selected full-text providers | Return bibliographic records or documents |
+| Local Inference Service | Host Ollama API, called through [agents/client.py](agents/client.py) | Runs the configured local generation model; retrieval also uses its embedding API |
+| Review Storage | JSON, PDF, text, and index files under `data/reviews/REVIEW_ID/` | Preserves evidence, progress, decisions, and generated artifacts |
+
+The view is a **component-level sequence**, not a class-level call trace. The class diagrams above show the actual Python schemas and service class. React implements the web component, FastAPI implements the API component, and Ollama supplies the local inference service.
 
 The workflow is a predefined sequence with conditional review gates. It does not freely invent a new execution plan for every question. API validation errors leave the current phase unchanged. Model or source failures are logged. Completed checkpoints and usable partial results are retained for resume; unfinished operations may be retried.
 
