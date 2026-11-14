@@ -16,7 +16,7 @@ The main output is a **scientific manuscript about the research topic**. A separ
 
 1. [Project purpose](#1-project-purpose)
 2. [Features and scope](#2-features-and-scope)
-3. [System architecture](#3-system-architecture)
+3. [System architecture and UML design](#3-system-architecture-and-uml-design)
 4. [Agents and responsibilities](#4-agents-and-responsibilities)
 5. [Review workflow](#5-review-workflow)
 6. [Models and retrieval](#6-models-and-retrieval)
@@ -33,7 +33,8 @@ The main output is a **scientific manuscript about the research topic**. A separ
 17. [Troubleshooting](#17-troubleshooting)
 18. [Scope and limitations](#18-scope-and-limitations)
 19. [Academic deliverables](#19-academic-deliverables)
-20. [References](#20-references)
+20. [Conclusion](#20-conclusion)
+21. [References](#21-references)
 
 ## 1. Project purpose
 
@@ -72,29 +73,49 @@ The architecture accepts different research topics. Users must adapt search term
 | User experience | Chat workspace, original PDF reader, step-by-step decisions, progress, pause/resume, and downloads |
 | Auditability | Saved checkpoints, model configuration, decision history, artifact versions, and execution traces |
 
-## 3. System architecture
+## 3. System architecture and UML design
+
+The design is documented through four complementary views: logical components, deployment nodes, implemented classes, and the execution sequence. Components describe responsibilities; deployment nodes describe where software runs; classes describe data structures and services in the code.
+
+### 3.1 Logical component architecture
 
 ```mermaid
 flowchart TB
-    User[Researcher] --> UI[React and TypeScript interface]
-    UI --> API[FastAPI backend]
-    API --> Jobs[Background job manager]
-    Jobs --> Mode{Review mode}
-    Mode --> Guided[Guided workflow: LangGraph]
-    Mode --> Auto[Automated workflow: Python orchestrator]
-    Guided --> Stages[Shared review stages and agents]
-    Auto --> Stages
-    Stages --> Search[OpenAlex / PubMed / arXiv]
-    Search --> Sources[Downloaded PDFs and extracted text]
-    Sources --> RAG[Hybrid RAG and Chroma index]
-    RAG --> Stages
-    Stages <--> Ollama[Host Ollama service]
-    Stages --> Store[Persistent review workspace]
-    Store --> Reports[Scientific manuscript and technical report]
-    Reports --> UI
+    Browser["Web interface<br/>React / TypeScript"]
+    subgraph Application["Application backend"]
+        API["HTTP API<br/>FastAPI / Pydantic"]
+        Jobs["Job management<br/>Queue / locks / worker processes"]
+        Guided["Guided orchestration<br/>LangGraph state graph"]
+        Automatic["Automatic orchestration<br/>Python stage runner"]
+        Agents["Agent functions<br/>Planning / screening / extraction / appraisal / writing / QA"]
+        Retrieval["Retrieval subsystem<br/>Dense + lexical / RRF / reranking"]
+        Reporting["Reporting subsystem<br/>Manuscript / technical report / PRISMA / bibliography"]
+        Persistence["Persistence subsystem<br/>JSON checkpoints / decisions / source fingerprints"]
+    end
+    Academic["Academic services<br/>OpenAlex / PubMed / arXiv"]
+    Ollama["Local inference service<br/>Ollama HTTP API"]
+    Files[("Review files and Chroma indexes")]
+
+    Browser -->|"HTTP / JSON"| API
+    API --> Jobs
+    Jobs -->|"Guided mode"| Guided
+    Jobs -->|"Automated draft mode"| Automatic
+    Guided --> Agents
+    Automatic --> Agents
+    Agents -->|"Search and full-text acquisition"| Academic
+    Agents --> Retrieval
+    Agents -->|"Structured model calls"| Ollama
+    Retrieval -->|"Embeddings and optional reranking"| Ollama
+    Agents --> Reporting
+    Guided --> Persistence
+    Automatic --> Persistence
+    Retrieval --> Files
+    Reporting --> Files
+    Persistence --> Files
+    API -->|"Read sources and serve exports"| Files
 ```
 
-### Application layers
+*Figure 1. Logical component architecture. Arrows show calls or data access; they do not indicate a separate server for every component.*
 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
@@ -108,9 +129,263 @@ flowchart TB
 | Document processing | PyMuPDF | Read PDFs, locate passages, render pages, and extract tables |
 | Reporting | Python exporters and Word document generation | Produce Markdown, DOCX, BibTeX, CSV, and diagrams |
 
-**An agent is a specialized role**, with its own instructions, inputs, output schema, and checks. The agents can share the same underlying LLM. A multi-agent architecture does not require one separately installed model per agent.
+An agent is a specialized role with its own instructions, inputs, output schema, and checks. Agents share the configured LLM. Their implementation uses Python functions and structured schemas rather than an inheritance tree of autonomous agent objects.
 
-The workflow is mostly a predefined sequence with conditional review gates. It does not freely invent a new execution plan for every question.
+### 3.2 Deployment diagram
+
+```mermaid
+flowchart TB
+    subgraph Client["«device» Researcher's workstation"]
+        Browser["«executionEnvironment» Web browser<br/>React application"]
+    end
+    subgraph Host["«device» Application host / development machine"]
+        subgraph Engine["«executionEnvironment» Docker Engine / Docker Desktop"]
+            subgraph Network["«network» Compose default network"]
+                Frontend["«container» frontend<br/>«image» agentic-review-frontend:latest<br/>Node.js 22 static server<br/>Internal TCP 3000 / user: node"]
+                Backend["«container» backend<br/>«image» agentic-review-backend:latest<br/>Python 3.12 / FastAPI / Uvicorn<br/>Internal TCP 8000 / user: app"]
+            end
+        end
+        Ollama["«executionEnvironment» Host Ollama service<br/>HTTP API / TCP 11434"]
+        GPU["«device» GPU<br/>Local generation inference"]
+        Models[("«artifact» Host model storage<br/>Generation and embedding weights")]
+        Data[("«artifact» Host ./data directory<br/>PDFs / decisions / checkpoints / indexes / exports")]
+    end
+    Sources["«externalSystem» Academic APIs<br/>and open full-text providers"]
+
+    Browser -->|"HTTP: localhost:3000 → container:3000<br/>HTML / JavaScript / CSS / config.js"| Frontend
+    Browser -->|"HTTP: localhost:8000 → container:8000<br/>API requests / PDFs / downloads"| Backend
+    Frontend -.->|"Startup dependency: backend healthy"| Backend
+    Backend -->|"HTTP: host.docker.internal:11434<br/>Configurable host mapping"| Ollama
+    Backend -->|"HTTPS: TCP 443"| Sources
+    Backend -->|"Bind mount: ./data → /data"| Data
+    Ollama -->|"Load model weights"| Models
+    Ollama -->|"Generation when GPU is available"| GPU
+```
+
+*Figure 2. Deployment view using UML node stereotypes. In the default local deployment, the browser and application host run on the same computer. Their boxes separate user interaction from server execution. Ports are published on host loopback by default.*
+
+Deployment constraints:
+
+- **Two application containers:** the frontend serves compiled assets; the backend executes the workflows and serves research files.
+- **Direct browser-to-API communication:** the frontend server does not proxy review requests to FastAPI. `API_BASE_URL` must resolve from the browser; CORS controls permitted origins.
+- **Host inference:** Ollama runs outside Compose. Its weights are not included in either application image. With the default embedding setting, embedding inference uses CPU and generation can use the GPU.
+- **Embedded vector storage:** Chroma runs inside the backend process with indexes on the data mount; there is no separate Chroma container.
+- **Persistent research data:** recreating containers preserves the host `data/` directory. The image filesystem is not the research database.
+- **Platform-specific routing:** on the supported WSL setup, `host.docker.internal` maps to the private WSL address. Other installations use the configured Docker-to-host route.
+
+The image names shown correspond to the Compose project name `agentic-review`. Compose derives names from the project name unless explicitly overridden. Inspect the names on another installation with `docker compose images`.
+
+### 3.3 Class diagram: protocol, decisions, and appraisal
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Protocol {
+        <<PydanticModel>>
+        +str research_question
+        +str rationale
+        +list inclusion_criteria
+        +list exclusion_criteria
+        +list concepts
+        +list sources
+        +int max_records_per_query
+        +date date_from
+        +date date_to
+        +str appraisal_name
+        +list appraisal_domains
+        +str synthesis_plan
+        +bool meta_analysis
+    }
+    class Domain {
+        <<PydanticModel>>
+        +str id
+        +str question
+    }
+    class DecisionLog {
+        <<PydanticModel>>
+        +int schema_version
+        +str review_id
+        +list events
+    }
+    class Decision {
+        <<PydanticModel>>
+        +str item_id
+        +str stage
+        +str fingerprint
+        +str decision
+        +str reviewer
+        +str reason
+        +str timestamp
+        +dict reviewed_item
+    }
+    class AppraisalSubmission {
+        <<PydanticModel>>
+        +str fingerprint
+        +str reviewer
+        +str overall
+        +str rationale
+        +str study_id
+        +list domains
+        +dict characteristics
+    }
+    class DomainJudgement {
+        <<PydanticModel>>
+        +str domain_id
+        +str judgement
+        +str rationale
+        +str quote
+    }
+    class Characteristic {
+        <<PydanticModel>>
+        +str value
+        +str quote
+    }
+
+    Protocol "1" *-- "1..20" Domain : appraisal_domains
+    DecisionLog "1" *-- "0..*" Decision : events
+    AppraisalSubmission "1" *-- "0..*" DomainJudgement : domains
+    AppraisalSubmission "1" *-- "0..*" Characteristic : characteristics
+    DomainJudgement ..> Domain : identifies by domain_id
+    Decision ..> Protocol : evaluated under protocol criteria
+    AppraisalSubmission ..> Protocol : checked against configured domains
+```
+
+*Figure 3. Implemented protocol and human-review models. Selected fields are shown; the diagram is not an exhaustive schema dump.*
+
+**Notation:** `*--` denotes a contained value; `..>` denotes a dependency. Quoted cardinalities state how many nested values are allowed. Dependencies on the protocol are resolved by validation functions; they are not object-pointer fields inside `Decision` or `AppraisalSubmission`.
+
+The diagram follows the code:
+
+| Model | Source | Design rule |
+| --- | --- | --- |
+| `Protocol`, `Domain` | [methodology/protocol.py](methodology/protocol.py) | Require meaningful criteria, a valid date range, and distinct appraisal domain identifiers |
+| `Decision`, `DecisionLog` | [storage/human_review.py](storage/human_review.py) | Keep reviewer identity, the reviewed content, and the content fingerprint with each event |
+| `AppraisalSubmission`, `DomainJudgement`, `Characteristic` | [methodology/appraisal.py](methodology/appraisal.py) | Store human judgements and source support separately from machine proposals |
+
+`date_from` and `date_to` are optional. Decision and judgement strings have restricted values in the Pydantic schemas. The submission schema permits an empty domain list, while saving a real appraisal checks the submitted domains against the approved protocol.
+
+### 3.4 Class diagram: execution and scientific writing
+
+```mermaid
+classDiagram
+    direction TB
+
+    class JobManager {
+        +ThreadPoolExecutor executor
+        +dict locks
+        +dict active
+        +dict processes
+        +bool stopping
+        +start(review_id) dict
+        +status(review_id) dict
+        +pause(review_id) dict
+        +mutation(review_id)
+        +close()
+    }
+    class ReviewState {
+        <<TypedDict>>
+        +str review_id
+        +str review_path
+        +str topic
+        +str status
+        +list completed
+        +list errors
+        +dict protocol
+        +str protocol_fingerprint
+        +dict model_config
+        +list papers
+        +list evidence
+        +str report
+        +dict quality_review
+    }
+    class SectionDraft {
+        <<PydanticModel>>
+        +list paragraphs
+    }
+    class Paragraph {
+        <<PydanticModel>>
+        +str text
+        +list evidence_ids
+    }
+    class EvidenceQuote {
+        <<PydanticModel>>
+        +str kind
+        +str passage_id
+        +str quote
+    }
+    class EditorialVerdict {
+        <<PydanticModel>>
+        +str entailed
+        +str reason
+    }
+
+    JobManager ..> ReviewState : worker reads and persists checkpoints
+    SectionDraft "1" *-- "1..200" Paragraph : paragraphs
+    Paragraph ..> EvidenceQuote : may cite through evidence lookup
+    EditorialVerdict ..> Paragraph : assesses source entailment
+```
+
+*Figure 4. Execution service and writing schemas. `ReviewState` is a typed dictionary, not an ORM entity or a Pydantic object. The two groups describe execution and writing, not a single object ownership tree.*
+
+`JobManager` launches a subprocess for a review and controls queued/running jobs. The workflow reads and writes `ReviewState` checkpoints in JSON. `SectionDraft` and `Paragraph` constrain model output; `EditorialVerdict` records a support audit. Paragraph evidence IDs resolve through a fact lookup that can reference source quotations, table rows, or permitted study assessments. They are not direct `EvidenceQuote` object references.
+
+Sources: [api/jobs.py](api/jobs.py), [workflow/state.py](workflow/state.py), [agents/writing_agent.py](agents/writing_agent.py), and [agents/grounding.py](agents/grounding.py).
+
+The Guided graph uses `ReviewState`; the automatic runner persists a dictionary with additional mode-specific fields. Both runners use saved state to reuse completed work.
+
+### 3.5 Sequence diagram: a Guided processing phase
+
+```mermaid
+sequenceDiagram
+    actor Researcher
+    participant UI as React interface
+    participant API as FastAPI
+    participant Jobs as JobManager
+    participant Worker as Review subprocess
+    participant Sources as Academic services
+    participant Model as Ollama
+    participant Store as Review files
+
+    Researcher->>UI: Start or resume an approved review
+    UI->>API: POST /api/reviews/{id}/run
+    API->>Jobs: start(review_id)
+    Jobs-->>API: Job identifier and queued status
+    API-->>UI: 202 Accepted
+    Jobs->>Worker: Launch main.py with review_id
+    Worker->>Store: Read protocol and saved checkpoint
+    Store-->>Worker: Review state
+    opt Phase requires search or acquisition
+        Worker->>Sources: Search records or request full text
+        Sources-->>Worker: Results or recorded access failure
+    end
+    opt Phase requires model inference
+        Worker->>Model: Prompt, schema, and bounded source context
+        Model-->>Worker: Structured proposal
+        Worker->>Worker: Check source support and output constraints
+    end
+    Worker->>Store: Save outputs, trace, and confirmation state
+    Worker-->>Jobs: Exit at the Guided phase boundary
+    loop Refresh conversation status
+        UI->>API: GET /api/reviews/{id}
+        API->>Store: Read checkpoint and review queue
+        Store-->>API: Current artifacts and pending items
+        API-->>UI: Progress or validation card
+    end
+    Researcher->>UI: Review sources and save required decisions
+    UI->>API: Record item decisions
+    API->>Store: Append validated decision events
+    Researcher->>UI: Confirm and continue
+    UI->>API: POST /api/reviews/{id}/confirm-step
+    API->>API: Check token, protocol, and pending decisions
+    API->>Store: Save phase confirmation
+    API-->>UI: Confirmation recorded
+    UI->>API: POST /api/reviews/{id}/run
+```
+
+*Figure 5. Successful Guided phase transition. Item decisions are saved before phase confirmation. HTTP acceptance starts a background job; it does not mean the scientific stage has already finished.*
+
+The workflow is a predefined sequence with conditional review gates. It does not freely invent a new execution plan for every question. API validation errors leave the current phase unchanged. Model or source failures are logged. Completed checkpoints and usable partial results are retained for resume; unfinished operations may be retried.
 
 ## 4. Agents and responsibilities
 
@@ -148,6 +423,8 @@ flowchart LR
     I --> J[Quality checks]
     J --> K[Reports and final review]
 ```
+
+*Figure 6. Review activity flow. Guided mode inserts explicit human decisions and phase confirmations between the processing stages.*
 
 | Step | What happens | What the user can inspect |
 | --- | --- | --- |
@@ -277,6 +554,24 @@ A healthy API means the HTTP service is running. Check `/api/runtime` as well to
 | Backend | [Dockerfile](Dockerfile) | Python 3.12, FastAPI, one Uvicorn worker | `8000` | Host `./data` mounted at `/data` |
 | Frontend | [frontend/Dockerfile](frontend/Dockerfile) | Node 22 serving compiled React assets | `3000` | Review data is stored by the backend |
 
+```mermaid
+flowchart LR
+    subgraph BackendBuild["Backend image build"]
+        UV["uv tool stage<br/>ghcr.io/astral-sh/uv:0.13.7"]
+        PythonBuilder["Python dependency stage<br/>python:3.12-slim-bookworm<br/>pyproject.toml + uv.lock"]
+        PythonRuntime["Backend runtime image<br/>python:3.12-slim-bookworm<br/>Application + locked .venv<br/>User: app / port: 8000"]
+        UV -->|"Copy uv executable"| PythonBuilder
+        PythonBuilder -->|"Copy installed environment"| PythonRuntime
+    end
+    subgraph FrontendBuild["Frontend image build"]
+        NodeBuilder["React build stage<br/>node:22-alpine<br/>npm ci + npm run build"]
+        NodeRuntime["Frontend runtime image<br/>node:22-alpine<br/>dist + server.mjs<br/>User: node / port: 3000"]
+        NodeBuilder -->|"Copy compiled assets"| NodeRuntime
+    end
+```
+
+*Figure 7. Multi-stage image construction. Build tools and runtime artifacts are separated. Review data and Ollama model weights are managed outside these images.*
+
 Both images use multi-stage builds and non-root runtime users. Python dependencies are installed from `uv.lock`; frontend dependencies use `package-lock.json`. Compose builds the application images locally; this setup does not require a pre-published project image from Docker Hub.
 
 Ollama is **not a third Compose service**. Model weights are managed by the host Ollama installation and are not bundled inside the application images. GPU inference happens through that host service; the Python container does not require its own CUDA model installation.
@@ -387,6 +682,10 @@ Final acceptance applies to the overall draft. It does not create intermediate h
 
 The chat assistant can explain a stage, but writing “approve” in chat does not record a scientific decision. Use the dedicated review buttons.
 
+### Remove an unused conversation
+
+Use the trash button next to a conversation in the sidebar and confirm the action. The conversation disappears from the workspace; its files are preserved under the local `data/deleted_reviews/` directory. Running or queued reviews cannot be removed. Pause a running review and wait for its worker to stop first.
+
 ## 10. Reports and exported files
 
 ### Scientific manuscript
@@ -459,7 +758,7 @@ These checks reduce identifiable errors. Exact source matching alone does not es
 
 The planner can propose a general, prediction-model, or diagnostic-accuracy rubric. Users can edit the domains in the protocol. Machine proposals use `low`, `high`, or `unclear` judgements with source support; missing support and disagreement remain unclear.
 
-These are **project-defined rubrics**, not full implementations of validated clinical instruments. A formal risk-of-bias assessment requires an appropriate instrument and researcher review. Prediction-model and diagnostic-study guidance are linked in the [references](#20-references).
+These are **project-defined rubrics**, not full implementations of validated clinical instruments. A formal risk-of-bias assessment requires an appropriate instrument and researcher review. Prediction-model and diagnostic-study guidance are linked in the [references](#21-references).
 
 ### PRISMA-oriented reporting
 
@@ -795,7 +1094,17 @@ The generated technical report documents a particular review run. The academic p
 
 Use a completed saved review for stages that take longer than the video. Clearly distinguish the live interface from previously computed results.
 
-## 20. References
+## 20. Conclusion
+
+Folio brings the main stages of a systematic literature review into one traceable workflow: protocol definition, academic search, screening, source extraction, appraisal, synthesis, scientific writing, and export. Guided mode makes researcher decisions explicit, while Automated draft mode prepares a draft without intermediate human approvals. Both modes preserve source evidence and execution records.
+
+The architecture separates the user interface, review orchestration, retrieval, local inference, persistence, and reporting. Two Docker images package the application; the host Ollama service supplies generation and embeddings. Source-linked paragraphs, readable research tables, selection diagrams, Word exports, and a separate technical report make the result easier to examine and reuse.
+
+The evaluation framework connects the implementation to measurable criteria: screening precision and recall, extraction and citation correctness, completeness, simulated reviewer consistency, retrieval quality, and comparable task timings. Results must be calculated from actual reference annotations and recorded runs. Neither a polished manuscript nor agreement between model roles is a substitute for scientific validation.
+
+The project's contribution is an inspectable, resumable environment for AI-assisted review preparation. Its scientific reliability depends on the protocol, search coverage, available texts, evidence checks, and researcher judgement. This defines both the practical value of the system and the boundaries within which its outputs should be interpreted.
+
+## 21. References
 
 - [PRISMA 2020 checklist](https://www.prisma-statement.org/prisma-2020-checklist) — reporting guidance; exported diagram attribution is retained.
 - [LangGraph documentation](https://docs.langchain.com/oss/python/langgraph/overview) — stateful workflow orchestration.
