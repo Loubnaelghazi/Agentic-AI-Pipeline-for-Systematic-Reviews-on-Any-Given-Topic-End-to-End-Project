@@ -1,0 +1,274 @@
+{
+  "purpose": "Historical local model-selection diagnostic; not human-reference systematic-review accuracy.",
+  "diagnostic_date": "2026-11-10",
+  "hardware": "NVIDIA RTX 4060 Laptop GPU, 8 GB VRAM",
+  "context_tokens": 8192,
+  "temperature": 0,
+  "thinking": false,
+  "scoring": "Expected yes/no/unknown verdict, plus an exact source quote of at least 15 characters for yes/no; unknown does not require a quote.",
+  "models": [
+    {
+      "model": "qwen3.5:4b",
+      "digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+      "quantization": "Q4_K_M",
+      "passed": 7,
+      "total": 12,
+      "median_generation_tokens_per_second": 53.384349688158025,
+      "cases": [
+        {
+          "id": "negated_modality",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 22.457062605000147,
+          "tokens_per_second": 50.11322008222863,
+          "predicted": "no"
+        },
+        {
+          "id": "missing_split",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 1.7979338120001103,
+          "tokens_per_second": 52.36860101903136,
+          "predicted": "no"
+        },
+        {
+          "id": "original_not_review",
+          "expected": "no",
+          "grounded": false,
+          "correct": false,
+          "elapsed_seconds": 1.7624368109998159,
+          "tokens_per_second": 54.22592067866753,
+          "predicted": "no"
+        },
+        {
+          "id": "pneumonia_outcome",
+          "expected": "yes",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 2.0214999780000653,
+          "tokens_per_second": 49.583990321205086,
+          "predicted": "yes"
+        },
+        {
+          "id": "crossvalidation_not_annotation",
+          "expected": "unknown",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.4504491510001571,
+          "tokens_per_second": 53.48367779588231,
+          "predicted": "no"
+        },
+        {
+          "id": "cited_work_not_this_study",
+          "expected": "unknown",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 2.175039692999917,
+          "tokens_per_second": 54.40853555732141,
+          "predicted": "unknown"
+        },
+        {
+          "id": "missing_detail_not_absence",
+          "expected": "unknown",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 2.541659361999791,
+          "tokens_per_second": 55.39967119546501,
+          "predicted": "no"
+        },
+        {
+          "id": "table_correct_metric",
+          "expected": "yes",
+          "grounded": false,
+          "correct": false,
+          "elapsed_seconds": 1.4938607720000618,
+          "tokens_per_second": 53.201576482843784,
+          "predicted": "yes"
+        },
+        {
+          "id": "table_wrong_metric",
+          "expected": "no",
+          "grounded": false,
+          "correct": false,
+          "elapsed_seconds": 1.8944835560000683,
+          "tokens_per_second": 55.61103078406664,
+          "predicted": "no"
+        },
+        {
+          "id": "table_wrong_dataset",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 2.6016283980000026,
+          "tokens_per_second": 56.155173746168316,
+          "predicted": "no"
+        },
+        {
+          "id": "nonmedical_original",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 1.5724662850000186,
+          "tokens_per_second": 53.2036963069488,
+          "predicted": "no"
+        },
+        {
+          "id": "nonmedical_missing_control",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 1.7021334779999506,
+          "tokens_per_second": 53.28502158043374,
+          "predicted": "no"
+        }
+      ]
+    },
+    {
+      "model": "gemma3:4b",
+      "digest": "68ceab7e468a31c988b44d5a4984a0e21f58c4f7158c6ce29c1804babac38df7",
+      "quantization": "Q4_K_M",
+      "passed": 4,
+      "total": 12,
+      "median_generation_tokens_per_second": 49.5254552866924,
+      "cases": [
+        {
+          "id": "negated_modality",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 16.06597614899988,
+          "tokens_per_second": 46.357017773120766,
+          "predicted": "no"
+        },
+        {
+          "id": "missing_split",
+          "expected": "no",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.5664184730001125,
+          "tokens_per_second": 50.66169806753767,
+          "predicted": "yes"
+        },
+        {
+          "id": "original_not_review",
+          "expected": "no",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 1.517466597000066,
+          "tokens_per_second": 54.13920152835708,
+          "predicted": "no"
+        },
+        {
+          "id": "pneumonia_outcome",
+          "expected": "yes",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 1.5026966990001256,
+          "tokens_per_second": 49.646195634594974,
+          "predicted": "yes"
+        },
+        {
+          "id": "crossvalidation_not_annotation",
+          "expected": "unknown",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.3106049759999223,
+          "tokens_per_second": 49.62138031280291,
+          "predicted": "no"
+        },
+        {
+          "id": "cited_work_not_this_study",
+          "expected": "unknown",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.1776335600000039,
+          "tokens_per_second": 48.58921222310223,
+          "predicted": "yes"
+        },
+        {
+          "id": "missing_detail_not_absence",
+          "expected": "unknown",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.4438022879999153,
+          "tokens_per_second": 47.72183894515648,
+          "predicted": "no"
+        },
+        {
+          "id": "table_correct_metric",
+          "expected": "yes",
+          "grounded": true,
+          "correct": true,
+          "elapsed_seconds": 1.5284721819998595,
+          "tokens_per_second": 56.192771858076036,
+          "predicted": "yes"
+        },
+        {
+          "id": "table_wrong_metric",
+          "expected": "no",
+          "grounded": false,
+          "correct": false,
+          "elapsed_seconds": 1.3125783769999089,
+          "tokens_per_second": 49.429530260581885,
+          "predicted": "yes"
+        },
+        {
+          "id": "table_wrong_dataset",
+          "expected": "no",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.5979267010000058,
+          "tokens_per_second": 54.76010913204534,
+          "predicted": "yes"
+        },
+        {
+          "id": "nonmedical_original",
+          "expected": "no",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.4736666439998771,
+          "tokens_per_second": 48.274272615718104,
+          "predicted": "yes"
+        },
+        {
+          "id": "nonmedical_missing_control",
+          "expected": "no",
+          "grounded": true,
+          "correct": false,
+          "elapsed_seconds": 1.3690775009999925,
+          "tokens_per_second": 48.670681997931496,
+          "predicted": "yes"
+        }
+      ]
+    }
+  ],
+  "embedding_catalog_comparison": [
+    {
+      "model": "qwen3-embedding:0.6b",
+      "digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+      "size_bytes": 639150858,
+      "context_length": 32768,
+      "embedding_length": 1024,
+      "quantization": "Q8_0",
+      "labelled_retrieval_score": null
+    },
+    {
+      "model": "nomic-embed-text:latest",
+      "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+      "size_bytes": 274302450,
+      "context_length": 2048,
+      "embedding_length": 768,
+      "quantization": "F16",
+      "labelled_retrieval_score": null
+    }
+  ],
+  "selected_llm": "qwen3.5:4b",
+  "selected_embedding": "qwen3-embedding:0.6b",
+  "limitations": [
+    "Twelve synthetic cases; no repeated-run confidence interval or human-labelled review benchmark.",
+    "Generation token throughput is not end-to-end review latency.",
+    "Embedding entries describe catalog capabilities; no measured head-to-head retrieval superiority is claimed."
+  ]
+}

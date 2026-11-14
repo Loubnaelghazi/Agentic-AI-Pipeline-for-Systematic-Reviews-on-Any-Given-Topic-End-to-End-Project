@@ -439,6 +439,8 @@ flowchart LR
 
 An unavailable PDF is an **access gap**, not a scientific exclusion. A missing extraction is a processing gap. An uncertain eligibility decision means that the available evidence does not support a clear decision under the criteria.
 
+If the search is empty, all records are excluded, no retained full text is available, or no eligible evidence remains, processing stops with a **search and selection outcome**. The system exports `selection_report.md` and `selection_report.docx` with recorded counts and recovery options. It does not continue through empty appraisal and scientific writing stages. Existing decisions are preserved; revising a protocol or changing a decision remains an explicit researcher action.
+
 ### Guided and automatic modes
 
 | Behaviour | Guided | Automated draft |
@@ -468,6 +470,58 @@ In Guided mode, **Confirm & continue** does not replace the required decisions f
 The local development setup used an NVIDIA RTX 4060 Laptop GPU with 8 GB VRAM. This is a deployment example, not a universal hardware requirement or speed guarantee. Actual memory and latency depend on model quantization, context length, available RAM, and the number of passages processed.
 
 Folio uses the models selected in configuration. It does not download models automatically or silently switch to a larger model. A model change must remain traceable. Changing the embedding model creates a separate index identity rather than mixing incompatible vectors.
+
+### Why Qwen was selected
+
+Model selection considered source fidelity, structured decisions, generation speed, and the memory available on the development GPU. The final configuration uses **Qwen3.5 4B for generation** and **Qwen3-embedding 0.6B for retrieval**. These choices have different evidence behind them: a measured local diagnostic for the LLM, and a capability/integration comparison for embeddings.
+
+#### LLM comparison: Qwen3.5 4B and Gemma3 4B
+
+Both models were run on the same 12 synthetic source-based cases with an 8,192-token context, temperature 0, and thinking disabled where supported. The cases check negation, missing information, attribution to cited work, numerical values, and dataset/metric associations. A case passes only when the verdict matches the expected answer and any required quotation matches the supplied source.
+
+| Criterion | Qwen3.5 4B | Gemma3 4B |
+| --- | --- | --- |
+| Ollama identifier | `qwen3.5:4b` | `gemma3:4b` |
+| Tested quantization | Q4_K_M | Q4_K_M |
+| Strict source-based cases passed | **7 / 12** | 4 / 12 |
+| Median generation throughput | **53.38 tokens/s** | 49.53 tokens/s |
+| Observed GPU residency during the diagnostic | Entire loaded model on GPU | Entire loaded model on GPU |
+| Project decision | **Selected as the default generation model** | Evaluated and not retained in the active installation |
+
+Qwen produced more correct, source-supported answers and a higher median generation rate in this diagnostic, so it offered the better measured trade-off for this setup. The 4B configuration also leaves more memory headroom than a larger model when running the review pipeline on an 8 GB GPU.
+
+These are **model-selection diagnostics**, not the accuracy of the complete review system. The sample is small, the results are from one recorded run, and both models made errors. The human-reference evaluation in Section 12 measures scientific performance separately. Throughput measures generated tokens, not the total time to search, read, and write a review.
+
+The results were captured on 10 November 2026. A portable summary with model digests, case outcomes, and measurement scope is available in [model_selection_results.json](evaluation/model_selection_results.json). The diagnostic procedure is implemented in [scripts/audit_models.py](scripts/audit_models.py).
+
+To repeat the diagnostic with both models installed and Ollama reachable from the host:
+
+```bash
+python3 scripts/audit_models.py \
+  --base-url http://127.0.0.1:11434 \
+  --models qwen3.5:4b gemma3:4b \
+  --output data/model_audits/repeated-diagnostic.json
+```
+
+Set `--base-url` to the actual host Ollama address on WSL. The command measures the installed model revisions; results can change after a model or runtime update.
+
+#### Embedding options: Qwen3-embedding and Nomic
+
+The development model inventory included both embedding options below. Qwen is the model integrated into the retained review indexes. This table compares the recorded local model metadata and the integration choice; it does not present an unmeasured retrieval benchmark.
+
+| Criterion | Qwen3-embedding 0.6B | Nomic Embed Text |
+| --- | --- | --- |
+| Ollama identifier | `qwen3-embedding:0.6b` | `nomic-embed-text:latest` |
+| Recorded model size | About 639 MB | About 274 MB |
+| Recorded embedding dimensions | 1,024 | 768 |
+| Recorded supported context | 32,768 tokens | 2,048 tokens |
+| Query preparation in the project | Scientific retrieval instruction followed by the query | `search_query:` prefix, with `search_document:` for documents |
+| Labelled head-to-head retrieval score | Not measured | Not measured |
+| Project decision | **Selected and used for the retained Chroma indexes** | Earlier available alternative; not retained in the active installation |
+
+Qwen was retained for its supported input length, the project's scientific-query instruction, and compatibility with the current indexes. Embedding inference runs on CPU to reserve GPU memory for the LLM. More dimensions or a longer supported context do not, by themselves, establish better retrieval accuracy. The project's text chunks are smaller than a full paper; the model context figure is a capability, not the size of every submitted passage.
+
+For a measured relevance comparison, [evaluation/retrieval.py](evaluation/retrieval.py) evaluates human-labelled source quotations using recall@k, reciprocal rank, and latency, as explained in Section 12.
 
 ### How hybrid RAG works
 
