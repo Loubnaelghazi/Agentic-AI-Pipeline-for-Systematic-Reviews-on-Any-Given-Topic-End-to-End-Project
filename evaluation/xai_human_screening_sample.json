@@ -1,17 +1,12 @@
 {
   "review_id": "explainable_ai_in_ids_socs_f18d0395",
-  "human_assessment": {
-    "recorded_at_utc": "2026-11-15T17:26:39.908482+00:00",
-    "reviewer": "Loubna",
-    "scope": "Researcher title/abstract thematic eligibility decisions. Not full-text evidence or citation verification.",
-    "sampling": "Three purposefully selected records; not representative of all 51 retrieved records.",
-    "human_reported_total_seconds_approximate": 120,
-    "timing_method": "Researcher retrospective estimate for all three records; no measured per-record times.",
-    "per_record_times_available": false,
-    "citation_verification_completed": false,
-    "extraction_verification_completed": false,
-    "response": "1 include: on topic; 2 include: on topic; 3 exclude: off topic. About two minutes for all three."
-  },
+  "recorded_at_utc": "2026-11-15T17:39:53.120656+00:00",
+  "sampling": "Initial three purposefully selected cases plus two further records per source, sorted by identifier, without consulting screening decisions for supplementary selection. Not random or representative.",
+  "records_assessed_by_researcher": 9,
+  "definitive_human_labels": 7,
+  "human_uncertain_records": 2,
+  "human_decision_coverage": 0.7777777777777778,
+  "score_scope": "Strict binary screening scores on seven resolved human title/abstract relevance labels. Two human-uncertain records are reported separately and excluded from binary scoring; four machine-uncertain predictions among the seven scored records count as incorrect for strict accuracy.",
   "labels": [
     {
       "paper_id": "W4313116287",
@@ -45,6 +40,53 @@
       "extraction_correct": null,
       "required_fields_complete": null,
       "reason": "Outside the XAI/IDS topic"
+    },
+    {
+      "paper_id": "W4285058242",
+      "title": "“Why Should I Trust Your IDS?”: An Explainable Deep Learning Framework for Intrusion Detection Systems in Internet of Things Networks",
+      "decision": "include",
+      "reviewer": "Loubna",
+      "manual_seconds": null,
+      "citation_correct": null,
+      "extraction_correct": null,
+      "required_fields_complete": null,
+      "human_reported_decision": "include",
+      "reason": "On topic and considered important by the researcher",
+      "manual_seconds_estimate": 40,
+      "timing_method": "Researcher approximate per-article estimate; not a stopwatch measurement"
+    },
+    {
+      "paper_id": "W4360585441",
+      "title": "Explainable AI for Intrusion Detection Systems",
+      "decision": "include",
+      "reviewer": "Loubna",
+      "manual_seconds": null,
+      "citation_correct": null,
+      "extraction_correct": null,
+      "required_fields_complete": null,
+      "human_reported_decision": "include"
+    },
+    {
+      "paper_id": "A08d8543f44d67954",
+      "title": "XAI-based Feature Selection for Improved Network Intrusion Detection Systems",
+      "decision": "include",
+      "reviewer": "Loubna",
+      "manual_seconds": null,
+      "citation_correct": null,
+      "extraction_correct": null,
+      "required_fields_complete": null,
+      "human_reported_decision": "include"
+    },
+    {
+      "paper_id": "A0c0de1c909c9c00d",
+      "title": "Tabular Diffusion based Actionable Counterfactual Explanations for Network Intrusion Detection",
+      "decision": "include",
+      "reviewer": "Loubna",
+      "manual_seconds": null,
+      "citation_correct": null,
+      "extraction_correct": null,
+      "required_fields_complete": null,
+      "human_reported_decision": "include"
     }
   ],
   "predictions": [
@@ -74,9 +116,131 @@
         "exclude"
       ],
       "automated_seconds": 2.6862509789989417
+    },
+    {
+      "paper_id": "W4285058242",
+      "decision": "include",
+      "reviewer_decisions": [
+        "include",
+        "include"
+      ],
+      "automated_seconds": 4.908445186998506
+    },
+    {
+      "paper_id": "W4360585441",
+      "decision": "uncertain",
+      "reviewer_decisions": [
+        "uncertain",
+        "uncertain"
+      ],
+      "automated_seconds": 5.131779313998777
+    },
+    {
+      "paper_id": "A08d8543f44d67954",
+      "decision": "uncertain",
+      "reviewer_decisions": [
+        "uncertain",
+        "include"
+      ],
+      "automated_seconds": 4.87650759799908
+    },
+    {
+      "paper_id": "A0c0de1c909c9c00d",
+      "decision": "include",
+      "reviewer_decisions": [
+        "include",
+        "include"
+      ],
+      "automated_seconds": 5.091894527999102
+    }
+  ],
+  "unresolved_human_assessments": [
+    {
+      "paper_id": "P41120397",
+      "title": "Cloud-based DDoS detection using hybrid feature selection with deep reinforcement learning (DRL).",
+      "decision": null,
+      "reviewer": "Loubna",
+      "manual_seconds": null,
+      "citation_correct": null,
+      "extraction_correct": null,
+      "required_fields_complete": null,
+      "human_reported_decision": "uncertain",
+      "reason": "Researcher uncertain: emphasis on DRL and cloud-based DDoS"
+    },
+    {
+      "paper_id": "P41157315",
+      "title": "A Comprehensive Survey on Intrusion Detection Systems for Healthcare 5.0: Concepts, Challenges, and Practical Applications.",
+      "decision": null,
+      "reviewer": "Loubna",
+      "manual_seconds": null,
+      "citation_correct": null,
+      "extraction_correct": null,
+      "required_fields_complete": null,
+      "human_reported_decision": "uncertain",
+      "reason": "Researcher uncertain about the healthcare IDS setting"
+    }
+  ],
+  "unresolved_predictions": [
+    {
+      "paper_id": "P41120397",
+      "decision": "include",
+      "reviewer_decisions": [
+        "include",
+        "include"
+      ],
+      "automated_seconds": 5.6678931530004775
+    },
+    {
+      "paper_id": "P41157315",
+      "decision": "uncertain",
+      "reviewer_decisions": [
+        "include",
+        "exclude"
+      ],
+      "automated_seconds": 4.687196601000323
     }
   ],
   "results": {
+    "sample_size": 7,
+    "precision": 1.0,
+    "recall": 0.5,
+    "accuracy": 0.42857142857142855,
+    "uncertain_predictions": 4,
+    "f1": 0.6666666666666666,
+    "confusion": {
+      "true_positive": 3,
+      "false_positive": 0,
+      "false_negative_including_abstentions": 3
+    },
+    "decision_coverage": 0.42857142857142855,
+    "retention_recall": 1.0,
+    "scope": "Screening on the labelled sample, not search exhaustiveness. Uncertain counts as incorrect for strict accuracy and is retained for retention recall.",
+    "simulated_reviewer_agreement": 0.5714285714285714,
+    "simulated_reviewer_pairs": 7,
+    "simulated_reviewer_kappa": 0.3,
+    "time_savings_fraction": null,
+    "timing_scope": "Same-scope per-record screening only; machine time includes cached reviewer calls where recorded. Human verification time for the final manuscript is separate.",
+    "citation_correct_rate": null,
+    "citation_correct_rated_samples": 0,
+    "extraction_correct_rate": null,
+    "extraction_correct_rated_samples": 0,
+    "required_fields_complete_rate": null,
+    "required_fields_complete_rated_samples": 0
+  },
+  "timing_observations": [
+    {
+      "scope": "Initial three records combined",
+      "seconds_approximate": 120,
+      "measured": false
+    },
+    {
+      "scope": "First record of the supplementary batch only",
+      "paper_id": "W4285058242",
+      "seconds_approximate": 40,
+      "measured": false
+    }
+  ],
+  "initial_three_record_results": {
     "sample_size": 3,
     "precision": 1.0,
     "recall": 0.5,
@@ -104,9 +268,9 @@
     "required_fields_complete_rated_samples": 0
   },
   "limitations": [
-    "Three-record convenience sample; cannot estimate performance across the full corpus.",
-    "Human labels concern thematic title/abstract eligibility, not full-text eligibility or correctness of extracted evidence.",
-    "Uncertain predictions count as incorrect under strict accuracy; they are not scientific exclusions.",
-    "The approximately 120-second human total is an estimate, not a controlled timing baseline. No per-record manual times or time-saving claim are supplied."
+    "Nine assessed records with seven definitive labels from one researcher; not a representative sample of all 51 records.",
+    "Binary scores are conditional on the seven human-resolved cases. Human uncertainties must not be relabelled to improve scores.",
+    "Human labels assess title/abstract thematic eligibility; no human full-text citation, extraction or completeness ratings are supplied.",
+    "Manual times are incomplete approximate estimates. No per-record measured timings, total manual baseline or validated time-saving claim are supplied."
   ]
 }
