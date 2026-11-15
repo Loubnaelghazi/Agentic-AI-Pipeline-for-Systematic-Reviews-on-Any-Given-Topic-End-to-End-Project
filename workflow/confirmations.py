@@ -110,4 +110,10 @@ def confirm_step(review_id, token, reviewer):
     state.update(status="ready_to_continue", awaiting_confirmation=None)
     write_json(root / "workflow_state.json", state)
     write_status(review_id, state["status"], False)
+    from workflow.selection_outcome import EmptySelection, stop_if_empty
+
+    try:
+        stop_if_empty(state)
+    except EmptySelection:
+        return {**event, "status": "no_evidence"}
     return event

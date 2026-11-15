@@ -218,32 +218,49 @@ progress {
   overflow: auto;
   min-height: 0;
 }
-.conversation-list > button {
+.conversation-item {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.conversation-item .conversation-open {
   border: 0;
   background: transparent;
   display: flex;
   align-items: center;
   text-align: left;
   gap: 10px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 11px 10px;
   border-radius: 8px;
   color: var(--text-secondary);
-  margin-bottom: 4px;
 }
-.conversation-list > button > span {
+.conversation-item .conversation-open > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
 }
-.conversation-list > button:hover {
+.conversation-item:hover {
   background: var(--surface-hover);
 }
-.conversation-list > button.selected {
+.conversation-item.selected {
   background: var(--surface-hover);
   color: var(--text);
 }
+.conversation-item.selected .conversation-open { color: var(--text); }
+.conversation-delete {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 9px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.conversation-delete:hover:not(:disabled) { color: #dc2626; background: var(--surface-hover); }
+.conversation-delete:disabled { opacity: 0.35; cursor: not-allowed; }
 .conversation-list > p {
   font-size: 12px;
   padding: 10px;

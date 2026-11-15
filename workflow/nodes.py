@@ -337,6 +337,7 @@ def synthesis(state):
 
 def quality(state):
     from agents.critic_agent import review_report
+    from agents.scientific_qa import review_manuscript
 
     require_protocol(state["review_id"])
     queue = review_queue(state["review_id"])
@@ -429,6 +430,21 @@ def quality(state):
     ):
         issues.append("PRISMA reporting checklist needs human review")
     result.update(passed=bool(result["passed"] and not issues), issues=issues)
+    scientific = review_manuscript(
+        require_protocol(state["review_id"]).model_dump(mode="json"),
+        valid,
+        state["report"],
+    )
+    write_json(output(state, "scientific_quality.json"), scientific)
+    result["scientific_critic"] = scientific
+    if not scientific["passed"]:
+        result["passed"] = False
+        result["issues"].extend(
+            f"Scientific critic ({f['category']}): {f['explanation']}"
+            for f in scientific["findings"]
+        )
+        if not scientific["completed"]:
+            result["issues"].append("Scientific criticism is incomplete.")
     write_json(output(state, "quality_review.json"), result)
     stats = {
         "retrieved_records": len(state["papers"]),
@@ -469,7 +485,7 @@ def quality(state):
 
 
 def appraisal(state):
-    from agents.appraisal_agent import propose_appraisal
+    from agents.appraisal_agent import APPRAISAL_VERSION, propose_appraisal
 
     queue = review_queue(state["review_id"])
     require_protocol(state["review_id"])
@@ -485,10 +501,10 @@ def appraisal(state):
             len(items),
             f"Preparing appraisal for {item['paper_id']}",
         )
-        if (
-            item["assessment"]
-            or existing.get(item["paper_id"], {}).get("fingerprint")
-            == item["fingerprint"]
+        if item["assessment"] or (
+            existing.get(item["paper_id"], {}).get("fingerprint") == item["fingerprint"]
+            and existing.get(item["paper_id"], {}).get("proposal", {}).get("version")
+            == APPRAISAL_VERSION
         ):
             continue
         record = next(

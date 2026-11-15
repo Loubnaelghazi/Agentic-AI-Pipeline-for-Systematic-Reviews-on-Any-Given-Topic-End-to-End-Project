@@ -99,7 +99,6 @@ def dual_screen(protocol, paper, fingerprint, previous=None, on_review=None):
     }
     import time
 
-    started = time.perf_counter()
     reviews = list(previous or [])
     for role in [
         "Eligibility reviewer: check every approved inclusion criterion",
@@ -160,7 +159,7 @@ Abstract: {paper.get("abstract")}
             "disagreement": not agree,
             "reviews": reviews,
             "protocol_fingerprint": fingerprint,
-            "elapsed_seconds": time.perf_counter() - started,
+            "elapsed_seconds": sum(r.get("elapsed_seconds", 0) for r in reviews),
             "method": "Two blinded prompt roles, same local model; independence is simulated",
         },
     }

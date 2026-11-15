@@ -43,6 +43,24 @@ def main():
         if (args.directory / name).exists():
             raise ValueError("Use a new directory to avoid overwriting human labels")
         write_json(args.directory / name, values)
+    write_json(
+        args.directory / "reference_material.json",
+        {
+            "review_id": args.review_id,
+            "protocol": read_json(root / "protocol.json", {}).get("protocol"),
+            "papers": [
+                {
+                    "paper_id": p["id"].split("/")[-1],
+                    "title": p.get("title"),
+                    "abstract": p.get("abstract"),
+                    "doi": p.get("doi"),
+                }
+                for p in papers
+            ],
+            "evidence": read_json(root / "outputs/evidence.json", []),
+            "instructions": "Read the protocol and original sources before reviewing machine predictions. Label title/abstract screening for all sampled records. For each available full text verify citation, extraction and required fields separately. Record actual manual screening seconds; do not include full-text audit time in a screening-only comparison. Leave unavailable assessments null.",
+        },
+    )
 
 
 if __name__ == "__main__":

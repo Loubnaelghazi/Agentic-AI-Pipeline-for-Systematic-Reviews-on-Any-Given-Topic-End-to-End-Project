@@ -54,9 +54,22 @@ def evaluate(labels, predictions):
         "uncertain_predictions": sum(
             p.get("decision") == "uncertain" for p in predictions
         ),
-        "f1": 2 * precision * recall / (precision + recall)
-        if precision is not None and recall is not None and precision + recall
+        "f1": 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None,
+        "confusion": {
+            "true_positive": tp,
+            "false_positive": fp,
+            "false_negative_including_abstentions": fn,
+        },
+        "decision_coverage": sum(p["decision"] != "uncertain" for p in predictions)
+        / len(predictions),
+        "retention_recall": sum(
+            t["decision"] == "include" and predicted[pid]["decision"] != "exclude"
+            for pid, t in truth.items()
+        )
+        / sum(t["decision"] == "include" for t in labels)
+        if any(t["decision"] == "include" for t in labels)
         else None,
+        "scope": "Screening on the labelled sample, not search exhaustiveness. Uncertain counts as incorrect for strict accuracy and is retained for retention recall.",
     }
     agreements = [p for p in predictions if len(p.get("reviewer_decisions", [])) == 2]
     results["simulated_reviewer_agreement"] = (
@@ -67,14 +80,35 @@ def evaluate(labels, predictions):
         if agreements
         else None
     )
+    results["simulated_reviewer_pairs"] = len(agreements)
+    if agreements:
+        categories = ("include", "exclude", "uncertain")
+        expected = (
+            sum(
+                sum(p["reviewer_decisions"][0] == c for p in agreements)
+                * sum(p["reviewer_decisions"][1] == c for p in agreements)
+                for c in categories
+            )
+            / len(agreements) ** 2
+        )
+        results["simulated_reviewer_kappa"] = (
+            (results["simulated_reviewer_agreement"] - expected) / (1 - expected)
+            if expected < 1
+            else None
+        )
+    else:
+        results["simulated_reviewer_kappa"] = None
     manual = [t.get("manual_seconds") for t in labels]
     automated = [p.get("automated_seconds") for p in predictions]
     valid_times = all(
-        isinstance(v, (int, float)) and math.isfinite(v) and v >= 0
+        type(v) in (int, float) and math.isfinite(v) and v >= 0
         for v in manual + automated
     )
     results["time_savings_fraction"] = (
         1 - sum(automated) / sum(manual) if valid_times and sum(manual) > 0 else None
+    )
+    results["timing_scope"] = (
+        "Same-scope per-record screening only; machine time includes cached reviewer calls where recorded. Human verification time for the final manuscript is separate."
     )
     for field in ("citation_correct", "extraction_correct", "required_fields_complete"):
         ratings = [t[field] for t in labels if isinstance(t.get(field), bool)]

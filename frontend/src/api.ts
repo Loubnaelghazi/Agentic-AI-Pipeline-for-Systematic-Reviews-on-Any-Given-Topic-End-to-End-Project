@@ -146,6 +146,7 @@ export type WritingStatus = {
   sections?: { name: string; verified: boolean }[];
 };
 export type Detail = Review & {
+  selection_outcome?: { reason: string; message: string; status: string; scientific_manuscript_available: boolean } | null;
   writing?: WritingStatus;
   automatic_result?: {
     writing?: WritingStatus;
@@ -206,7 +207,7 @@ export type Detail = Review & {
     tool: string;
     assessment: StudyAssessment | null;
   }[];
-  appraisal_proposals: Record<string, { proposal: { notes: string[] } }>;
+  appraisal_proposals: Record<string, { proposal: { notes: string[]; domains?: { domain_id: string; judgement: string; rationale: string; support: { text: string; page_start?: number | null }[] }[] } }>;
   prisma: {
     source: string;
     report_fingerprint: string;
@@ -238,6 +239,7 @@ export type Detail = Review & {
     passed: boolean;
     issues: string[];
     recommendations: string[];
+    scientific_critic?: { completed: boolean; findings: { paper_id: string; category: string; explanation: string; manuscript_quote: string; evidence_quote: string }[]; failures: { paper_id: string; error: string }[] };
   } | null;
   statistics: Record<string, number | null> | null;
   decisions: Decision[];

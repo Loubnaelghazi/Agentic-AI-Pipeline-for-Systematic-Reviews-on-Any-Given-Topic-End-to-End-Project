@@ -14,6 +14,8 @@ from api.jobs import JobManager
 from methodology.protocol import draft_protocol, load_protocol
 from methodology.runtime import save_configuration, settings, worker_environment
 from storage import review_manager
+from storage.human_review import read_json
+from storage.review_manager import write_json
 from workflow.automatic import decide_final, result, run_review
 
 
@@ -68,6 +70,17 @@ class AutomaticModeTests(unittest.TestCase):
             ],
         }
         with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "agents.scientific_qa.review_manuscript",
+                    return_value={
+                        "completed": True,
+                        "passed": True,
+                        "findings": [],
+                        "failures": [],
+                    },
+                )
+            )
             stack.enter_context(
                 patch(
                     "workflow.automatic.write_manuscript",
@@ -167,6 +180,19 @@ class AutomaticModeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             decide_final("fixture", value["fingerprint"], "reject", "Test reviewer")
         self.assertFalse((self.review / "outputs/human_decisions.json").exists())
+
+    def test_cached_pdf_outside_current_selection_is_not_assessed_or_synthesized(self):
+        write_json(
+            self.review / "outputs/full_text.json",
+            [{"paper_id": "W9", "status": "retrieved", "method": "Previous protocol"}],
+        )
+        self.run_automatic()
+        acquired = read_json(self.review / "outputs/full_text.json", [])
+        self.assertEqual([p["paper_id"] for p in acquired], ["W1"])
+        eligibility = read_json(self.review / "outputs/automatic_eligibility.json", {})
+        self.assertEqual(set(eligibility), {"W1"})
+        state = read_json(self.review / "workflow_state.json", {})
+        self.assertEqual(state["eligible_paper_ids"], ["W1"])
 
     def test_rejection_endpoint_and_stale_result_protection(self):
         self.run_automatic()

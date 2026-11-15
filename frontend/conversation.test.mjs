@@ -16,6 +16,8 @@ const compiled = await build({
       export { preferredTheme, saveTheme } from "./src/lib/theme";
       import { RunSetup, defaultRunConfig } from "./src/components/RunSetup";
       import { Report } from "./src/components/Report";
+      import { ConversationItem } from "./src/components/ConversationItem";
+      export const renderConversationItem = (disabled = false) => renderToStaticMarkup(<ConversationItem review={{id:"test",topic:"Disposable conversation"}} selected={true} disabled={disabled} onChoose={() => {}} onDelete={() => {}} />);
       export const renderSetup = (changes = {}) => renderToStaticMarkup(<RunSetup value={{...defaultRunConfig,...changes}} onChange={() => {}} disabled={false} />);
       export const renderReport = (detail) => renderToStaticMarkup(<Report detail={detail} />);
       import { ThinkingControl } from "./src/components/ThinkingControl";
@@ -40,6 +42,28 @@ new Function("require", "module", "exports", compiled.outputFiles[0].text)(
   module.exports,
 );
 const render = module.exports.render;
+test("empty selections show a selection outcome instead of writing retries or final acceptance", () => {
+  const d = fixture();
+  d.workflow_status = "no_evidence";
+  d.awaiting_confirmation = null;
+  d.selection_outcome = { reason: "all_screened_out", message: "All records were excluded.", status: "no_evidence", scientific_manuscript_available: false };
+  d.artifacts = ["selection_report.docx"];
+  d.report = "A historical empty manuscript";
+  const html = render(d);
+  assert.match(html, /All records were excluded/);
+  assert.match(html, /Download selection report/);
+  assert.doesNotMatch(html, /Resume scientific writing|Confirm &amp; finish|Accept final result/);
+  const report = module.exports.renderReport(d);
+  assert.doesNotMatch(report, /A historical empty manuscript|Writing in progress or incomplete/);
+});
+test("conversation deletion is a separate accessible action and can be disabled", () => {
+  const html = module.exports.renderConversationItem(false);
+  assert.equal((html.match(/<button/g) || []).length, 2);
+  assert.match(html, /aria-label="Delete conversation: Disposable conversation"/);
+  assert.match(html, /aria-current="page"/);
+  const disabled = module.exports.renderConversationItem(true);
+  assert.match(disabled, /class="conversation-delete"[^>]*disabled=""/);
+});
 const fixture = () => ({
   id: "fixture",
   topic: "Temporary review",

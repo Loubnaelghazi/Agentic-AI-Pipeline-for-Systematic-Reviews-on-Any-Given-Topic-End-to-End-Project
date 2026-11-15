@@ -2,6 +2,7 @@ import { defaultRunConfig } from "./components/RunSetup";
 import { RunSettings } from "./components/RunSettings";
 import { preferredTheme, saveTheme } from "./lib/theme";
 import { PaperLibrary } from "./components/PaperLibrary";
+import { ConversationItem } from "./components/ConversationItem";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowUp,
@@ -10,7 +11,6 @@ import {
   LoaderCircle,
   Menu,
   Moon,
-  MessageSquare,
   Plus,
   Search,
   Settings2,
@@ -38,6 +38,7 @@ export default function App() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState("");
   const [topic, setTopic] = useState("");
   const [runConfig, setRunConfig] = useState(defaultRunConfig);
   const [theme, setTheme] = useState(preferredTheme);
@@ -142,6 +143,25 @@ export default function App() {
     setDrawer(null);
     setError("");
   }
+  async function deleteConversation(review: Review) {
+    if (deleting || (review.id === selected && busy)) return;
+    if (!window.confirm(`Delete the conversation “${review.topic}” from your workspace? Its saved files will be kept in a local backup.`)) return;
+    setDeleting(review.id);
+    setError("");
+    try {
+      await request(`/reviews/${encodeURIComponent(review.id)}`, { method: "DELETE" });
+      setReviews(list => list.filter(r => r.id !== review.id));
+      if (active.current === review.id) {
+        active.current = "";
+        setDetail(null);
+        choose("");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDeleting("");
+    }
+  }
   async function createReview(e?: React.FormEvent) {
     e?.preventDefault();
     if (!topic.trim() || creating) return;
@@ -235,14 +255,14 @@ export default function App() {
           {reviews
             .filter((r) => r.topic.toLowerCase().includes(filter.toLowerCase()))
             .map((r) => (
-              <button
+              <ConversationItem
                 key={r.id}
-                className={selected === r.id ? "selected" : ""}
-                onClick={() => choose(r.id)}
-              >
-                <MessageSquare size={15} />
-                <span>{r.topic}</span>
-              </button>
+                review={r}
+                selected={selected === r.id}
+                disabled={!!deleting || (selected === r.id && busy)}
+                onChoose={() => choose(r.id)}
+                onDelete={() => void deleteConversation(r)}
+              />
             ))}
           {!reviews.length && <p>Your conversations will appear here.</p>}
         </nav>

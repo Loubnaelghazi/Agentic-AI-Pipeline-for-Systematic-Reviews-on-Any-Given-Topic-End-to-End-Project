@@ -2,6 +2,8 @@ from typing import TypedDict
 
 
 class ReviewState(TypedDict, total=False):
+    selection_outcome: dict | None
+    quality_versions: list[str]
     scientific_writer_version: str
     awaiting_confirmation: dict | None
     pending_review_items: list[str]

@@ -47,6 +47,22 @@ def write_json(path: Path, value):
     temporary.replace(path)
 
 
+def remove_review(review_id: str):
+    """Remove a conversation from the workspace, preserving its files locally."""
+    from datetime import UTC, datetime
+
+    root = get_review_path(review_id)
+    destination_root = REVIEW_ROOT.parent / "deleted_reviews"
+    if destination_root.resolve().parent != REVIEW_ROOT.parent.resolve():
+        raise ValueError("Invalid deleted review directory")
+    destination_root.mkdir(parents=True, exist_ok=True)
+    destination = destination_root / (
+        review_id + "_" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    )
+    root.rename(destination)
+    return {"id": review_id, "status": "removed", "files_preserved": True}
+
+
 def archive_outputs(review_id: str):
     """Copy prior scientific outputs before invalidating dependent workflow stages."""
     import shutil
@@ -57,6 +73,10 @@ def archive_outputs(review_id: str):
     sources = [
         outputs / name
         for name in (
+            "selection_outcome.json",
+            "selection_report.md",
+            "selection_report.docx",
+            "scientific_quality.json",
             "automatic_review.md",
             "automatic_review.docx",
             "automatic_result.json",

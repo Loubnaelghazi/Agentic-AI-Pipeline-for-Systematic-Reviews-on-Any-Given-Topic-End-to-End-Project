@@ -13,7 +13,7 @@ from storage.human_review import digest, read_json
 from storage.review_manager import write_json
 from workflow.progress import progress
 
-DECISION_VERSION = "criterion-flat-audit-v6"
+DECISION_VERSION = "criterion-flat-audit-v7"
 
 
 class Finding(BaseModel):
@@ -170,10 +170,12 @@ def assess_full_text(protocol, paper_id, folder):
         if saved.get("fingerprint") == decision_identity
         else {}
     )
-    for cid in sorted(candidates):
+    for criterion_index, cid in enumerate(sorted(candidates)):
         progress(
             folder.parent.name,
             "full_text_screening",
+            criterion_index,
+            len(candidates),
             message=f"{paper_id}: checking {criteria[cid][:90]}"
             + (" (careful audit)" if OLLAMA_AUDIT_REASONING else ""),
         )
@@ -199,15 +201,29 @@ def assess_full_text(protocol, paper_id, folder):
             contradicted.add(cid)
         elif cid.startswith("E"):
             unresolved_exclusions.append(cid)
+        # A separately source-audited exclusion is sufficient to exclude a report.
+        # Do not spend model calls on remaining criteria after that decision.
+        if cid.startswith("E") and decision["status"] == "supported":
+            break
     exclusions = {c for c in supported if c.startswith("E")}
     inclusion = {c for c in criteria if c.startswith("I")}
     conflicts = supported & contradicted
     recommendation = "uncertain"
-    if not conflicts and not unresolved_exclusions:
-        if exclusions:
-            recommendation = "exclude"
-        elif inclusion.issubset(supported) and not (inclusion & contradicted):
-            recommendation = "include"
+    audited_exclusions = {
+        cid
+        for cid, decision in decisions.items()
+        if cid.startswith("E") and decision["status"] == "supported"
+    }
+    if audited_exclusions:
+        exclusions = audited_exclusions
+        recommendation = "exclude"
+    elif (
+        not conflicts
+        and not unresolved_exclusions
+        and inclusion.issubset(supported)
+        and not (inclusion & contradicted)
+    ):
+        recommendation = "include"
     unresolved = sorted(
         (inclusion - supported) | conflicts | set(unresolved_exclusions)
     )
@@ -238,6 +254,7 @@ def assess_full_text(protocol, paper_id, folder):
         "audit_reasoning_requested": OLLAMA_AUDIT_REASONING,
         "exclusion_audits": {c: d for c, d in decisions.items() if c.startswith("E")},
         "criterion_decisions": decisions,
+        "skipped_criterion_audits": sorted(candidates - decisions.keys()),
         "unresolved_exclusions": unresolved_exclusions,
         "recommendation": recommendation,
         "reason": reason,

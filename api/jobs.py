@@ -99,6 +99,9 @@ class JobManager:
             (root / "outputs/pause_requested").unlink(missing_ok=True)
             (root / "outputs/progress.json").unlink(missing_ok=True)
             state = read_json(root / "workflow_state.json", {})
+            from methodology.protocol import load_protocol
+            from methodology.runtime import settings
+
             if state.get("status") == "awaiting_step_confirmation":
                 from methodology.protocol import load_protocol
 
@@ -111,6 +114,21 @@ class JobManager:
                     raise BusyReview(
                         "Confirm the current step in Review assistant before continuing."
                     )
+            from workflow.selection_outcome import EmptySelection, stop_if_empty
+
+            protocol = load_protocol(review_id)
+            if (
+                protocol
+                and state.get("protocol_fingerprint") == protocol["fingerprint"]
+            ):
+                try:
+                    stop_if_empty(state, settings(review_id)["mode"])
+                except EmptySelection:
+                    return {
+                        "review_id": review_id,
+                        "status": "completed",
+                        "workflow_status": "no_evidence",
+                    }
             environment = worker_environment(review_id)
             job = {
                 "id": uuid.uuid4().hex,

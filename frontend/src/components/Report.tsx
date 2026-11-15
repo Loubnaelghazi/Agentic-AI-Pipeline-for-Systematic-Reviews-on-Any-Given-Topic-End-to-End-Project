@@ -2,6 +2,7 @@ import { ArrowDownToLine, Clock3, FileText, ShieldCheck } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SelectionSummary } from "./SelectionSummary";
+import { SelectionOutcome } from "./SelectionOutcome";
 import { artifactUrl, readable, type Detail } from "../api";
 import { Badge, Empty } from "./ui";
 const fileLabels: Record<string, string> = {
@@ -15,6 +16,10 @@ const fileLabels: Record<string, string> = {
   "meta_analysis_template.csv": "Meta-analysis preparation (CSV)",
 };
 export function Report({ detail: d }: { detail: Detail }) {
+  if (d.selection_outcome && !["running", "queued"].includes(d.job?.status || "")) return <>
+    <SelectionOutcome detail={d} />
+    <SelectionSummary detail={d} />
+  </>;
   const manuscript = d.runtime_settings?.mode === "automatic" ? "automatic_review" : "literature_review";
   const technical = d.artifacts.filter(name => name.endsWith(".json") || name.startsWith("technical_report."));
   const documents = d.artifacts.filter(name => !name.endsWith(".json") && !name.startsWith("technical_report."));
@@ -95,6 +100,16 @@ export function Report({ detail: d }: { detail: Detail }) {
                 correctness.
               </p>
               <h3>Issues to assess</h3>
+              {d.quality.scientific_critic && <details>
+                <summary>Scientific criticism · {d.quality.scientific_critic.completed ? "completed" : "incomplete"} · {d.quality.scientific_critic.findings.length} concern(s)</summary>
+                {d.quality.scientific_critic.findings.map((f, i) => <div className="method-box" key={i}>
+                  <strong>{f.category.replaceAll("_", " ")}</strong>
+                  <p>{f.explanation}</p>
+                  {f.manuscript_quote && <><small>Manuscript passage</small><blockquote>{f.manuscript_quote}</blockquote></>}
+                  <small>Source evidence</small><blockquote>{f.evidence_quote}</blockquote>
+                </div>)}
+                {!d.quality.scientific_critic.completed && <p>Some checks could not be completed. Inspect the audit artifact before final scientific validation.</p>}
+              </details>}
               <ul className="qa-list">
                 {d.quality.issues.map((issue, i) => (
                   <li key={i}>{issue}</li>

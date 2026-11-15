@@ -51,6 +51,10 @@ from storage.review_manager import create_review, get_review_path, write_json
 from workflow.confirmations import confirm_step
 
 ARTIFACTS = {
+    "selection_outcome.json",
+    "selection_report.md",
+    "selection_report.docx",
+    "scientific_quality.json",
     "technical_report.md",
     "technical_report.docx",
     "step_confirmations.json",
@@ -245,13 +249,19 @@ def create_app(manager=None):
     application.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins(),
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type"],
     )
 
     @application.get("/api/health")
     def health():
         return {"status": "ok"}
+
+    @application.get("/api/appraisal-profiles")
+    def appraisal_profiles():
+        from methodology.appraisal_profiles import PROFILES
+
+        return PROFILES
 
     @application.get("/api/runtime")
     def runtime_diagnostics():
@@ -292,6 +302,23 @@ def create_app(manager=None):
         review_id, _ = create_review(body.topic)
         save_configuration(review_id, choices, validated=True)
         return summary(review_id)
+
+    @application.delete("/api/reviews/{review_id}")
+    def delete_review(review_id: str):
+        checked_path(review_id)
+        try:
+            with jobs.mutation(review_id):
+                checked_path(review_id)
+                return review_manager.remove_review(review_id)
+        except BusyReview as error:
+            raise HTTPException(
+                409,
+                "Pause the review and wait for the worker to stop before deleting it.",
+            ) from error
+        except (ValueError, OSError) as error:
+            raise HTTPException(
+                409, "The conversation could not be removed. Refresh and try again."
+            ) from error
 
     @application.get("/api/reviews/{review_id}")
     def details(review_id: str):
@@ -362,9 +389,12 @@ def create_app(manager=None):
             },
             "evidence": evidence,
             "report": report_path.read_text(encoding="utf-8")
-            if report_path.exists()
+            if report_path.exists() and state.get("status") != "no_evidence"
             else None,
             "writing": writing_status(review_id),
+            "selection_outcome": state.get("selection_outcome")
+            if state.get("status") == "no_evidence"
+            else None,
             "quality": read_json(
                 root
                 / "outputs"

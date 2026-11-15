@@ -1,0 +1,9 @@
+# Optional systemd drop-in for the local Ollama service on an 8 GB WSL VM.
+# The LLAMA_ARG_* variables are supported by the bundled llama-server used
+# by this installation; verify support with llama-server --help on other versions.
+# This limits inference caches, not the application's review checkpoints.
+[Service]
+Environment="LLAMA_ARG_CACHE_RAM=256"
+Environment="LLAMA_ARG_CTX_CHECKPOINTS=2"
+Environment="OLLAMA_NUM_PARALLEL=1"
+Environment="OLLAMA_MAX_LOADED_MODELS=2"

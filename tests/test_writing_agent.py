@@ -200,6 +200,7 @@ class ScientificWritingTests(unittest.TestCase):
             ValueError("Malformed draft"),
             SectionDraft(paragraphs=[paragraph]),
         ]
+        model.with_structured_output.return_value.invoke.reset_mock()
         with (
             patch("agents.writing_agent.chat_model", return_value=model),
             patch(
@@ -222,7 +223,8 @@ class ScientificWritingTests(unittest.TestCase):
             complete = write_manuscript("fixture", self.protocol, [self.record])
         self.assertTrue(complete["ready"])
         self.assertEqual(audit.call_count, 1)
-        self.assertEqual(complete["sections"]["abstract"]["attempts"], 2)
+        self.assertEqual(complete["sections"]["abstract"]["attempts"], 1)
+        self.assertEqual(model.with_structured_output.return_value.invoke.call_count, 2)
         self.assertEqual(len(complete["sections"]), len(SECTIONS))
 
     def test_rejected_paragraph_never_leaks_when_valid_paragraph_is_retained(self):
@@ -362,6 +364,76 @@ class ScientificWritingTests(unittest.TestCase):
                 {**self.packet, "included_paper_ids": ["W1", "W2"]},
                 [],
             )
+
+    def test_draft_checkpoint_preserves_earlier_publications_after_format_failure(self):
+        from agents.writing_agent import PublicationDraft, draft_section
+
+        facts = {
+            **self.packet["facts"],
+            "W2:Q1": {**self.packet["facts"][self.key], "paper_id": "W2"},
+        }
+        packet = {
+            **self.packet,
+            "included_paper_ids": ["W1", "W2"],
+            "draft_checkpoint": str(self.review / "outputs/draft-test.json"),
+        }
+        first = PublicationDraft(
+            paragraphs=[
+                {
+                    "text": "The model achieved an F1 of 0.80 on the test dataset.",
+                    "evidence_ids": [self.key],
+                }
+            ]
+        )
+        second = PublicationDraft(
+            paragraphs=[
+                {
+                    "text": "The second model achieved an F1 of 0.80 on the test dataset.",
+                    "evidence_ids": ["W2:Q1"],
+                }
+            ]
+        )
+        model = Mock()
+        model.with_structured_output.return_value.invoke.side_effect = [
+            first,
+            ValueError("Truncated JSON"),
+            ValueError("Truncated JSON"),
+        ]
+        with (
+            patch("agents.writing_agent.chat_model", return_value=model),
+            self.assertRaises(ValueError),
+        ):
+            draft_section("results", facts, packet, [])
+        self.assertEqual(
+            len(json.loads(Path(packet["draft_checkpoint"]).read_text())), 1
+        )
+        model.with_structured_output.return_value.invoke.side_effect = [second]
+        model.with_structured_output.return_value.invoke.reset_mock()
+        with patch("agents.writing_agent.chat_model", return_value=model):
+            draft = draft_section("results", facts, packet, [])
+        self.assertEqual(len(draft.paragraphs), 2)
+        self.assertEqual(model.with_structured_output.return_value.invoke.call_count, 1)
+
+    def test_publication_format_retry_is_bounded_and_validates_citation_scope(self):
+        from agents.writing_agent import PublicationDraft, draft_section
+
+        model = Mock()
+        valid = PublicationDraft(
+            paragraphs=[
+                {
+                    "text": "The model achieved an F1 of 0.80 on the test dataset.",
+                    "evidence_ids": [self.key],
+                }
+            ]
+        )
+        model.with_structured_output.return_value.invoke.side_effect = [
+            ValueError("Truncated JSON"),
+            valid,
+        ]
+        with patch("agents.writing_agent.chat_model", return_value=model):
+            draft = draft_section("results", self.packet["facts"], self.packet, [])
+        self.assertEqual(len(draft.paragraphs), 1)
+        self.assertEqual(model.with_structured_output.return_value.invoke.call_count, 2)
 
     def test_editor_gets_only_the_paragraphs_own_sources(self):
         from agents.writing_agent import EditorialVerdict

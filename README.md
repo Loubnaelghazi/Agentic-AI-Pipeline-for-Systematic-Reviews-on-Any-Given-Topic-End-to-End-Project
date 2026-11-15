@@ -741,6 +741,31 @@ The record limit applies **per query**, not to the entire review. Small limits a
 
 For a short functional test, use a narrow question and a small record limit. For a substantive review, define and justify coverage rather than treating the test settings as an exhaustive search.
 
+### Research workspace and setup
+
+![Folio home screen in dark mode, with the research question box, settings and saved conversations](assets/screenshots/research-home.png)
+
+*Figure 8. Starting a new review. The researcher enters a question and opens Settings before submitting it.*
+
+The main text box accepts the research question. Suggested questions illustrate possible topics. The left sidebar lists saved reviews so the researcher can return to earlier work. The controls below the text box show the selected model, execution mode and thinking setting. This screenshot shows **Guided** selected for a new conversation; it is a setup example, not evidence that the automatic XAI/IDS case study ran in Guided mode.
+
+![Research setup dialog showing model, thinking, Guided and Automated draft modes, search limits, temperature, years and academic sources](assets/screenshots/review-settings.png)
+
+*Figure 9. Configuring a new review. The setup dialog lets the researcher choose how the workflow runs and define its search boundaries.*
+
+| Control | Purpose |
+| --- | --- |
+| Local model | Select an installed Ollama model for generation |
+| Thinking | Control reasoning for ordinary generation; critical eligibility checks can use separate careful audits |
+| Guided | Request researcher decisions and confirmations at intermediate stages |
+| Automated draft | Process intermediate stages automatically, then request acceptance or rejection of the overall draft |
+| Records per query | Limit records returned for each source query; this is not a limit on the whole review |
+| Response temperature | Control variation in model responses; lower values favor consistency but do not guarantee correctness |
+| Publication years | Set optional lower and upper year bounds; leaving both blank applies no year restriction |
+| Search sources | Choose one or more academic connectors: OpenAlex, PubMed and arXiv |
+
+Select **Done**, enter the question and submit it to start. These settings apply to the new conversation. The screenshot illustrates editing the lower year bound to **2020** with no upper bound. The recorded XAI/IDS case study in Section 12 uses **2022–2025**; its saved protocol is the reference for that run. Selecting Automated draft does not create human approvals for individual claims or certify scientific quality.
+
 ### Guided mode: step by step
 
 | Phase | User action |
@@ -873,7 +898,7 @@ The academic evaluation addresses completeness, accuracy, inter-agent consistenc
 
 This case study follows a real review from the research question to the generated manuscript. It tests whether the agents can search, select, read and organize scientific evidence in one saved workflow.
 
-**Status recorded on 15 November 2026:** search, title/abstract screening, full-text screening and RAG indexing are complete. Evidence extraction is in progress. The final manuscript, final PRISMA figure and human-reference evaluation are not yet available for this run. The tables below describe the completed selection stages, not a completed systematic review.
+**Status recorded on 15 November 2026:** search, title/abstract screening, full-text screening, RAG indexing, evidence extraction and machine appraisal are complete. Scientific writing is in progress; sections that fail format or source checks require repair. The final manuscript, final PRISMA figure and human-reference evaluation are not yet available for this run. The tables below describe observed processing, not a completed systematic review.
 
 #### Research question and configuration
 
@@ -932,6 +957,8 @@ The connectors translate these concepts into source-specific queries. Earlier se
 | Full-text exclusions | 1 | Source-audited exclusion under the protocol |
 | Reports retained for attempted extraction | 37 | 21 include recommendations plus 16 provisional cases |
 | Passages indexed for RAG | 1,959 | Completed passage index; not a count of validated claims |
+| Extraction records saved | 37 | 36 contain retained quotations; one has no verified quotation after extraction |
+| Machine appraisal records saved | 37 | Proposals under the project rubric, not human-validated risk-of-bias assessments |
 
 The counts balance: **61 − 10 = 51**, **38 + 13 = 51**, and **21 + 16 + 1 = 38**. These checks establish arithmetic consistency only. They do not establish that every scientific decision is correct.
 
@@ -947,13 +974,13 @@ One concrete exclusion is *Development of machine learning models to identify po
 | Full-text acquisition | Obtain original PDFs and record access failures | 38 retrieved PDFs; 13 unavailable reports |
 | Full-text screening | Inspect article text, match quotations and audit disputed criteria | 21 include, 16 uncertain and 1 exclude recommendation |
 | RAG indexing | Split text into passages and build the retrieval index | 1,959 indexed passages |
-| Evidence extraction | Collect findings and source passages; check evidence support | In progress; a saved extraction is not human validation |
-| Study appraisal | Propose domain judgements under the configured project rubric | Pending; not a validated risk-of-bias assessment |
-| Synthesis and writing | Compare evidence and draft the scientific sections, tables and references | Pending; no final manuscript result claimed yet |
+| Evidence extraction | Collect findings and source passages; check evidence support | 37 extraction records saved; 36 contain retained quotations and one contains no verified quotation |
+| Study appraisal | Propose domain judgements under the configured project rubric | 37 machine appraisal records saved; not a validated risk-of-bias assessment |
+| Synthesis and writing | Compare evidence and draft the scientific sections, tables and references | In progress; verified sections are retained while missing or rejected sections are repaired |
 | Quality checks and export | Check the draft and export the manuscript, technical report and PRISMA artifacts | Pending for this run |
 | Researcher review | Inspect the final draft and independently verify a reference sample | Pending |
 
-Uncertain reports remain provisional. Their findings require particular attention during final review and must not be presented as confirmed eligible studies. When interpreting survey articles, results discussed from other authors must also be distinguished from the survey's own contribution; matching a quotation alone cannot guarantee correct attribution.
+Uncertain reports remain provisional. Their findings require particular attention during final review and must not be presented as confirmed eligible studies. A completed extraction without a verified quotation is an evidence gap, not a source of scientific conclusions or a scientific exclusion. When interpreting survey articles, results discussed from other authors must also be distinguished from the survey's own contribution; matching a quotation alone cannot guarantee correct attribution.
 
 #### Evaluation results available so far
 
@@ -978,7 +1005,7 @@ The following screenshots were captured by the researcher during the XAI/IDS rev
 
 ![Automatic XAI/IDS review showing the current article and full-text eligibility assessment](assets/screenshots/xai-ids-automatic-screening.png)
 
-*Figure 8. Automatic full-text screening during the XAI/IDS case study. The workspace displays the research topic, the local Qwen3.5 4B model and the title of the article being assessed.*
+*Figure 10. Automatic full-text screening during the XAI/IDS case study. The workspace displays the research topic, the local Qwen3.5 4B model and the title of the article being assessed.*
 
 The progress card identifies the current activity: checking the eligibility of an article from its full text. The displayed section counter refers to processing within that article, not to the total number of articles in the review. **Pause** allows the researcher to request a stop at a saved checkpoint, while **Live log** provides execution details. In this mode, intermediate decisions are machine proposals and the researcher reviews the final draft. The screenshot records an earlier screening step; it does not represent the latest run status or a completed review. Its elapsed time is not the total duration across pauses and resumed runs.
 
@@ -986,7 +1013,7 @@ The progress card identifies the current activity: checking the eligibility of a
 
 ![Papers and original PDFs panel showing 38 available full texts out of 51 records](assets/screenshots/xai-ids-original-pdfs.png)
 
-*Figure 9. Retrieved publications and original PDF access. At this point, 38 of the 51 bibliographic records have a saved original PDF.*
+*Figure 11. Retrieved publications and original PDF access. At this point, 38 of the 51 bibliographic records have a saved original PDF.*
 
 The **Papers & PDFs** panel lets the researcher search publications by title or year, inspect authors and publication dates, open a saved original PDF, and follow the source record. Unavailable PDFs are explicitly identified rather than silently removed. This supports source checking and helps distinguish an access problem from a scientific exclusion. **38 available PDFs does not mean 38 included studies**: eligibility is assessed separately, and some reports remain uncertain or are excluded.
 

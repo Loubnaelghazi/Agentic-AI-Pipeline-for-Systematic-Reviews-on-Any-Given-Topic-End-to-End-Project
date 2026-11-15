@@ -1,5 +1,5 @@
 import { PdfButton } from "./PdfViewer";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { apiUrl, request, type Detail } from "../api";
 import { Badge, Empty } from "./ui";
 
@@ -28,6 +28,12 @@ export function ProtocolPanel({
   const [reason, setReason] = useState("");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [profiles, setProfiles] = useState<Record<string, { name: string; guidance: string; domains: [string, string][] }>>({});
+  useEffect(() => {
+    let active = true;
+    request<typeof profiles>("/appraisal-profiles").then(v => { if (active) setProfiles(v); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   async function action(path: string, body?: unknown) {
     setSaving(true);
     try {
@@ -236,6 +242,19 @@ export function ProtocolPanel({
                 value={value.appraisal_name}
                 onChange={(e) => update("appraisal_name", e.target.value)}
               />
+            </label>
+            <label className="form-label">
+              Choose a study-design rubric
+              <select value="" onChange={e => {
+                const profile = profiles[e.target.value];
+                if (!profile) return;
+                setValue(v => v ? { ...v, appraisal_name: profile.name, appraisal_domains: profile.domains.map(([id, question]) => ({ id, question })) } : v);
+                setDirty(true);
+              }}>
+                <option value="">Select a proposed rubric…</option>
+                {Object.entries(profiles).map(([key, profile]) => <option key={key} value={key}>{profile.name}</option>)}
+              </select>
+              <small>{Object.values(profiles).find(p => p.name === value.appraisal_name)?.guidance || "Use the rubric appropriate to the included study designs. Save and approve any protocol changes."}</small>
             </label>
             <label className="form-label">
               Appraisal domains · id | question, one per line
@@ -708,6 +727,14 @@ function AppraisalForm({
           <div className="method-box" key={domain.id}>
             <h3>{domain.question}</h3>
             <p className="muted">{item.tool}</p>
+            {detail.appraisal_proposals[item.paper_id]?.proposal.domains?.filter(d => d.domain_id === domain.id).map(d => (
+              <div className="method-box" key={d.domain_id}>
+                <strong>AI proposal · {d.judgement.replaceAll("_", " ")}</strong>
+                <p>{d.rationale}</p>
+                {d.support.map((s, i) => <blockquote key={i}>{s.text}{s.page_start ? ` (PDF p. ${s.page_start})` : " (page not verified)"}</blockquote>)}
+                <small>Check the source and record your own judgement below. This proposal does not fill in or approve your decision.</small>
+              </div>
+            ))}
             <label className="form-label">
               Your judgement · required
               <select

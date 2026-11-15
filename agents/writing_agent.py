@@ -4,6 +4,7 @@ import json
 import re
 from collections import deque
 from decimal import Decimal
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,6 +36,11 @@ class Paragraph(BaseModel):
 class SectionDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
     paragraphs: list[Paragraph] = Field(min_length=1, max_length=200)
+
+
+class PublicationDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    paragraphs: list[Paragraph] = Field(min_length=1, max_length=1)
 
 
 class EditorialVerdict(BaseModel):
@@ -377,7 +383,9 @@ def draft_section(section, facts, packet, feedback):
         "conclusion": "Summarise the contribution this study actually demonstrated in its reported evaluation. No clinical recommendations or general superiority.",
         "abstract": "Briefly summarise this study's contribution using only facts already used in the verified manuscript.",
     }
-    for pid in packet["included_paper_ids"]:
+    checkpoint = packet.get("draft_checkpoint")
+    cache = read_json(Path(checkpoint), {}) if checkpoint else {}
+    for study_index, pid in enumerate(packet["included_paper_ids"]):
         selected = {k: v for k, v in facts.items() if v["paper_id"] == pid}
         if not selected:
             continue
@@ -403,16 +411,63 @@ def draft_section(section, facts, packet, feedback):
                     "section": section,
                     "question": packet["question"],
                     **prompt_evidence(selected),
-                    "revision_feedback": [f for f in feedback if pid in f][-2:],
+                    "revision_feedback": [f for f in feedback if pid in f][-2:]
+                    or feedback[-2:],
                 },
                 ensure_ascii=False,
             )
         )
-        result = (
-            chat_model(600)
-            .with_structured_output(SectionDraft, method="json_schema")
-            .invoke(prompt)
+        if packet.get("review_id"):
+            publication = next(iter(selected.values())).get("publication", {})
+            progress(
+                packet["review_id"],
+                "synthesis",
+                study_index,
+                len(packet["included_paper_ids"]),
+                f"Writing {section}: {publication.get('title') or 'publication'}",
+            )
+        key = digest(
+            {
+                "format": "single-publication-v1",
+                "prompt": prompt,
+                "generation": packet.get("generation"),
+                "model_revision": packet.get("model_revision"),
+            }
         )
+        result = None
+        if key in cache:
+            try:
+                result = PublicationDraft.model_validate(cache[key])
+                if any(
+                    k not in selected for p in result.paragraphs for k in p.evidence_ids
+                ):
+                    result = None
+            except ValueError:
+                result = None
+        if result is None:
+            for attempt in range(2):
+                try:
+                    result = (
+                        chat_model(1200)
+                        .with_structured_output(PublicationDraft, method="json_schema")
+                        .invoke(prompt)
+                    )
+                    if any(
+                        k not in selected
+                        for p in result.paragraphs
+                        for k in p.evidence_ids
+                    ):
+                        raise ValueError(
+                            "Writing crossed the publication-specific evidence boundary"
+                        )
+                    break
+                except ValueError:
+                    if attempt:
+                        raise
+                    prompt += "\nReturn exactly ONE paragraph in paragraphs, containing text and evidence_ids. Copy IDs exactly from the supplied facts. Do not add prose outside JSON."
+            cache[key] = result.model_dump()
+            if checkpoint:
+                write_json(Path(checkpoint), cache)
         for paragraph in result.paragraphs:
             if any(key not in selected for key in paragraph.evidence_ids):
                 raise ValueError(
@@ -633,12 +688,25 @@ def write_manuscript(review_id, protocol, evidence, assessments=None, mode="auto
                     if attempt == 0 and previous.get("rejected_draft"):
                         draft = SectionDraft.model_validate(previous["rejected_draft"])
                     else:
-                        draft = draft_section(section, facts, packet, feedback)
-                except ValueError:
+                        draft = draft_section(
+                            section,
+                            facts,
+                            {
+                                **packet,
+                                "review_id": review_id,
+                                "draft_checkpoint": str(
+                                    root / "outputs/writing_progress.json"
+                                ),
+                                "model_revision": revision,
+                            },
+                            feedback,
+                        )
+                except ValueError as error:
                     # A malformed proposal is a writing defect, not evidence.
                     # Keep transport failures resumable through the outer guard.
                     feedback = [
-                        "Return valid structured paragraphs with text and exact evidence_ids; no empty or missing fields."
+                        "Return valid structured paragraphs with text and exact evidence_ids; no empty or missing fields.",
+                        "Writing failure: " + str(error)[:500],
                     ]
                     history.append({"draft": None, "issues": feedback, "audits": {}})
                     value["sections"][section] = {

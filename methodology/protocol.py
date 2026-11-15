@@ -226,7 +226,7 @@ def strategies(protocol):
     return {
         "openalex": [
             " ".join(group[0] for group in protocol.concepts),
-            " ".join(t for group in protocol.concepts for t in group),
+            boolean,
         ],
         "pubmed": [
             boolean

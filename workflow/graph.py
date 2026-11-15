@@ -26,6 +26,7 @@ from storage.review_manager import archive_outputs, get_review_path, write_json
 from workflow import nodes
 from workflow.confirmations import ConfirmationRequired, await_confirmation
 from workflow.progress import WorkflowPaused, progress
+from workflow.selection_outcome import EmptySelection, stop_if_empty
 from workflow.state import ReviewState
 
 STAGES = [
@@ -49,6 +50,15 @@ def checkpoint(state):
 
 def stage(name):
     def execute(state):
+        if name in (
+            "download",
+            "ingestion",
+            "extraction",
+            "appraisal",
+            "synthesis",
+            "quality",
+        ):
+            stop_if_empty(state)
         if name in state.get("completed", []):
             print(f"Using completed stage: {name}", flush=True)
             return {}
@@ -74,6 +84,8 @@ def stage(name):
             merged = {**state, **update, "completed": complete, "status": "running"}
             checkpoint(merged)
             outcome = "completed"
+            if name in ("retrieval", "download"):
+                stop_if_empty(merged)
             await_confirmation(merged, name)
             return {**update, "completed": complete, "status": "running"}
         except ConfirmationRequired:
@@ -165,6 +177,9 @@ graph = build_graph()
 
 
 def run_review(review_id):
+    from agents.appraisal_agent import APPRAISAL_VERSION
+    from agents.scientific_qa import QA_VERSION
+
     path = get_review_path(review_id)
     saved = path / "workflow_state.json"
     state = (
@@ -195,6 +210,13 @@ def run_review(review_id):
         write_status(review_id, state["status"], False)
         return state
     require_protocol(review_id)
+    if state.get("protocol_fingerprint") == document["fingerprint"]:
+        try:
+            stop_if_empty(state)
+        except EmptySelection:
+            return read_json(path / "workflow_state.json", state)
+    else:
+        state["selection_outcome"] = None
     if (
         state.get("protocol_fingerprint") == document["fingerprint"]
         and state.get("status") == "awaiting_step_confirmation"
@@ -268,6 +290,10 @@ def run_review(review_id):
     current_signatures = signatures(review_id, current_queue)
     prior = state.get("human_review_signatures")
     invalidated = set()
+    if state.get("quality_versions") != [APPRAISAL_VERSION, QA_VERSION]:
+        # Existing human appraisal judgements remain authoritative on a QA upgrade.
+        invalidated.add("quality")
+        state["quality_versions"] = [APPRAISAL_VERSION, QA_VERSION]
     if state.get("scientific_writer_version") != WRITER_VERSION or (
         "synthesis" in state.get("completed", [])
         and not writing_status(review_id)["ready"]
@@ -318,6 +344,8 @@ def run_review(review_id):
             "quality" in result.get("completed", []),
         )
         return result
+    except EmptySelection:
+        return read_json(path / "workflow_state.json", state)
     except WorkflowPaused:
         result = read_json(path / "workflow_state.json", state)
         result["status"] = "paused"

@@ -377,6 +377,29 @@ def export_technical_report(review_id, appendix, papers, mode):
                 "## Audit files",
                 "Detailed decisions, retrieval passages, extraction checkpoints, model changes and source fingerprints are available in the accompanying JSON/CSV artifacts. Genuine human approvals remain separate from machine proposals.",
                 appendix,
+                "## Located scientific criticism",
+                markdown_table(
+                    [
+                        "Study",
+                        "Concern",
+                        "Explanation",
+                        "Manuscript passage",
+                        "Source passage",
+                    ],
+                    [
+                        [
+                            f.get("paper_id"),
+                            f.get("category"),
+                            f.get("explanation"),
+                            f.get("manuscript_quote") or "Omission",
+                            f.get("evidence_quote"),
+                        ]
+                        for f in read_json(out / "scientific_quality.json", {}).get(
+                            "findings", []
+                        )
+                    ],
+                ),
+                "The critic checks bounded extracted evidence. Missing findings do not certify scientific accuracy. See scientific_quality.json for completion status and failures.",
             ]
         )
         + "\n"

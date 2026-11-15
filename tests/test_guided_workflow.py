@@ -65,6 +65,9 @@ class GuidedWorkflowTests(unittest.TestCase):
             return stage
 
         with ExitStack() as stack:
+            # This test isolates phase confirmations with intentionally empty stage stubs.
+            stack.enter_context(patch("workflow.graph.stop_if_empty"))
+            stack.enter_context(patch("workflow.selection_outcome.stop_if_empty"))
             stack.enter_context(
                 patch(
                     "workflow.confirmations.writing_status",
@@ -144,6 +147,7 @@ class GuidedWorkflowTests(unittest.TestCase):
             },
         )
         with (
+            patch("workflow.graph.stop_if_empty"),
             patch("workflow.graph.writing_status", return_value={"ready": False}),
             patch(
                 "workflow.nodes.synthesis",

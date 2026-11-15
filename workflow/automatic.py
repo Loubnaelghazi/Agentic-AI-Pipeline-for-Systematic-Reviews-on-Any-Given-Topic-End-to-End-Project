@@ -38,6 +38,7 @@ from storage.human_review import (
 )
 from storage.review_manager import get_review_path, write_json
 from workflow.progress import WorkflowPaused, progress
+from workflow.selection_outcome import EmptySelection, stop_if_empty
 
 STAGES = [
     "search_strategy",
@@ -109,6 +110,19 @@ def result_fingerprint(review_id):
     )
 
 
+def completed_without_quotes(record):
+    """An audited absence of usable evidence is not a failed model request."""
+    return bool(
+        record
+        and "error" not in record
+        and record.get("extraction_complete") is True
+        and record.get("scientific_version") == SCIENTIFIC_VERSION
+        and record.get("grounding_status") == "no_verified_quotes"
+        and record.get("supporting_passages")
+        and not record.get("claims")
+    )
+
+
 def extraction_failures(review_id):
     root = get_review_path(review_id)
     state = read_json(root / "workflow_state.json", {})
@@ -117,13 +131,19 @@ def extraction_failures(review_id):
     failures = []
     for pid in eligible:
         record = records.get(pid)
-        if not record or "error" in record or not record.get("claims"):
+        if (
+            not record
+            or "error" in record
+            or (not record.get("claims") and not completed_without_quotes(record))
+        ):
             failures.append(pid)
     return failures
 
 
 def result(review_id):
     root = get_review_path(review_id)
+    if read_json(root / "workflow_state.json", {}).get("status") == "no_evidence":
+        return None
     value = read_json(root / "outputs/automatic_result.json", None)
     if value is None:
         return None
@@ -223,9 +243,14 @@ def decide_final(review_id, fingerprint, decision, reviewer, note=""):
 
 
 def run_review(review_id):
-    from agents.appraisal_agent import propose_appraisal
+    from agents.appraisal_agent import (
+        APPRAISAL_VERSION,
+        appraisal_identity,
+        propose_appraisal,
+    )
     from agents.extraction_agent import extract_evidence
     from agents.planner_agent import propose_protocol
+    from agents.scientific_qa import QA_VERSION
     from agents.screening_agent import dual_screen, full_text_proposal
     from agents.synthesis_agent import synthesize_evidence
     from rag.ingest import ingest_papers
@@ -246,6 +271,12 @@ def run_review(review_id):
         mode="automatic",
     )
     existing = result(review_id)
+    document = load_protocol(review_id)
+    if document and state.get("protocol_fingerprint") == document["fingerprint"]:
+        try:
+            stop_if_empty(state, "automatic")
+        except EmptySelection:
+            return read_json(root / "workflow_state.json", state)
     needs_scientific_upgrade = (
         state.get("scientific_version") != SCIENTIFIC_VERSION
         or state.get("eligibility_decision_version") != DECISION_VERSION
@@ -254,12 +285,14 @@ def run_review(review_id):
     failed_ids = extraction_failures(review_id)
     retry_failed = bool(failed_ids) and "full_text_screening" in state["completed"]
     retry_writing = bool(existing and not existing.get("writing", {}).get("ready"))
+    quality_upgrade = state.get("quality_versions") != [APPRAISAL_VERSION, QA_VERSION]
     if (
         existing
         and existing["current"]
         and not retry_failed
         and not needs_scientific_upgrade
         and not retry_writing
+        and not quality_upgrade
     ):
         if existing.get("reporting_version") != REPORTING_VERSION:
             upgrade_reporting(review_id)
@@ -301,6 +334,15 @@ def run_review(review_id):
         state["completed"] = [
             s for s in state["completed"] if s not in ("synthesis", "quality")
         ]
+    elif existing and quality_upgrade and existing["current"]:
+        from storage.review_manager import archive_outputs
+
+        archive_outputs(review_id)
+        state["completed"] = [
+            s
+            for s in state["completed"]
+            if s not in ("appraisal", "synthesis", "quality")
+        ]
     elif existing:
         write_json(root / "outputs/automatic_appraisal.json", {})
         state["completed"] = [
@@ -309,6 +351,7 @@ def run_review(review_id):
     state["scientific_version"] = SCIENTIFIC_VERSION
     state["eligibility_decision_version"] = DECISION_VERSION
     state["eligibility_audit_reasoning"] = OLLAMA_AUDIT_REASONING
+    state["quality_versions"] = [APPRAISAL_VERSION, QA_VERSION]
     state["status"] = "running"
     write_json(root / "workflow_state.json", state)
 
@@ -316,6 +359,15 @@ def run_review(review_id):
         return root / "outputs" / name
 
     def stage(name, callback):
+        if name in (
+            "download",
+            "ingestion",
+            "extraction",
+            "appraisal",
+            "synthesis",
+            "quality",
+        ):
+            stop_if_empty(state, "automatic")
         if name in state["completed"]:
             return
         progress(review_id, name, message=f"Automated draft: {name.replace('_', ' ')}")
@@ -327,6 +379,8 @@ def run_review(review_id):
             state["completed"].append(name)
             state["status"] = "running"
             write_json(root / "workflow_state.json", state)
+            if name in ("retrieval", "download", "full_text_screening"):
+                stop_if_empty(state, "automatic")
             outcome = "completed"
         except WorkflowPaused:
             outcome = "paused"
@@ -406,7 +460,12 @@ def run_review(review_id):
             for p in read_json(root / "papers.json", [])
             if p.get("screening", {}).get("decision") != "exclude"
         ]
-        outcomes = {p["paper_id"]: p for p in read_json(out("full_text.json"), [])}
+        selected_ids = {p["id"].rsplit("/", 1)[-1] for p in papers}
+        outcomes = {
+            p["paper_id"]: p
+            for p in read_json(out("full_text.json"), [])
+            if p["paper_id"] in selected_ids
+        }
         for index, paper in enumerate(papers):
             progress(
                 review_id,
@@ -434,10 +493,15 @@ def run_review(review_id):
         write_json(out("full_text.json"), list(outcomes.values()))
 
     def eligibility():
+        selected = {
+            p["id"].rsplit("/", 1)[-1]
+            for p in read_json(root / "papers.json", [])
+            if p.get("screening", {}).get("decision") != "exclude"
+        }
         available = [
             p
             for p in read_json(out("full_text.json"), [])
-            if p["status"] == "retrieved"
+            if p["status"] == "retrieved" and p["paper_id"] in selected
         ]
         proposals = read_json(out("automatic_eligibility.json"), {})
         protocol = Protocol.model_validate(load_protocol(review_id)["protocol"])
@@ -486,7 +550,10 @@ def run_review(review_id):
                 if (
                     not record
                     or "error" in record
-                    or not record.get("claims")
+                    or (
+                        not record.get("claims")
+                        and not completed_without_quotes(record)
+                    )
                     or record.get("scientific_version") != SCIENTIFIC_VERSION
                 ):
                     record = extract_evidence(review_id, pid)
@@ -520,9 +587,13 @@ def run_review(review_id):
                 len(records),
                 f"Preparing appraisal notes {index + 1} of {len(records)}",
             )
-            if "error" not in record and record["paper_id"] not in notes:
+            if "error" not in record and notes.get(record["paper_id"], {}).get(
+                "fingerprint"
+            ) != appraisal_identity(protocol, record):
                 try:
                     notes[record["paper_id"]] = propose_appraisal(protocol, record)
+                except WorkflowPaused:
+                    raise
                 except Exception as error:
                     notes[record["paper_id"]] = {"notes": [], "error": str(error)}
                 write_json(out("automatic_appraisal.json"), notes)
@@ -564,6 +635,8 @@ def run_review(review_id):
         export_automatic_reporting(review_id, report)
 
     def quality():
+        from agents.scientific_qa import review_manuscript
+
         log = read_json(out("search_log.json"), [])
         records = read_json(out("evidence.json"), [])
         issues = [
@@ -590,16 +663,32 @@ def run_review(review_id):
                 "Scientific manuscript writing is incomplete; this draft cannot be accepted yet."
             )
         issues.append("PRISMA reporting checklist needs human review.")
+        protocol = load_protocol(review_id)["protocol"]
+        scientific = review_manuscript(
+            protocol, records, out("automatic_review.md").read_text()
+        )
+        write_json(out("scientific_quality.json"), scientific)
+        if not scientific["completed"]:
+            issues.append(
+                "Scientific criticism is incomplete; inspect scientific_quality.json."
+            )
+        issues.extend(
+            f"Scientific critic ({f['category']}): {f['explanation']}"
+            for f in scientific["findings"]
+        )
         write_json(
             out("automatic_quality.json"),
             {
                 "passed": False,
+                "scientific_critic": scientific,
                 "issues": issues,
                 "recommendations": [
                     "Inspect quoted passages, original PDFs and machine proposals before accepting."
                 ],
             },
         )
+        # Refresh the separate technical export after the critic has produced its findings.
+        export_automatic_reporting(review_id)
 
     stages = [
         ("search_strategy", plan),
@@ -631,6 +720,8 @@ def run_review(review_id):
             },
         )
         state["status"] = "awaiting_final_review"
+    except EmptySelection:
+        return read_json(root / "workflow_state.json", state)
     except WorkflowPaused:
         state["status"] = "paused"
     except Exception as error:

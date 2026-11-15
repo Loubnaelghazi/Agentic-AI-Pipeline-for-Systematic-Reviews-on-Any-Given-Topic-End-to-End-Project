@@ -7,14 +7,74 @@ import httpx
 import test_automatic_mode as fixtures
 from langchain_core.documents import Document
 
+from agents.extraction_agent import select_source_statements
+from agents.grounding import SelectedEvidence, SentenceSelection
+from agents.semantic_validation import SCIENTIFIC_VERSION
 from agents.transport import retry_ollama
 from rag.retrieval import hybrid_search
 from storage.human_review import read_json
 from storage.review_manager import write_json
-from workflow.automatic import decide_final, result, result_fingerprint
+from workflow.automatic import (
+    completed_without_quotes,
+    decide_final,
+    extraction_failures,
+    result,
+    result_fingerprint,
+)
 
 
 class ExtractionRecoveryTests(unittest.TestCase):
+    def test_audited_empty_extraction_is_a_gap_but_transport_failure_is_not(self):
+        case = self.prepare()
+        write_json(case.review / "workflow_state.json", {"eligible_paper_ids": ["W1"]})
+        record = {
+            "paper_id": "W1",
+            "claims": [],
+            "extraction_complete": True,
+            "scientific_version": SCIENTIFIC_VERSION,
+            "grounding_status": "no_verified_quotes",
+            "supporting_passages": [{"text": "Source text was assessed."}],
+        }
+        write_json(case.review / "outputs/evidence.json", [record])
+        self.assertEqual(extraction_failures("fixture"), [])
+        self.assertTrue(completed_without_quotes(record))
+        for change in (
+            {"error": "Provider timeout"},
+            {"extraction_complete": False},
+            {"supporting_passages": []},
+        ):
+            changed = {**record, **change}
+            write_json(case.review / "outputs/evidence.json", [changed])
+            self.assertEqual(extraction_failures("fixture"), ["W1"])
+
+    def test_cached_invented_sentence_id_is_repaired_without_retrieval(self):
+        valid = SelectedEvidence(
+            selections=[SentenceSelection(kind="methodology", statement_id="P1-S1")]
+        )
+        model = Mock()
+        model.invoke.return_value = valid
+        with patch("agents.extraction_agent.structured_llm", model):
+            selections = select_source_statements(
+                "Source",
+                {"P1-S1"},
+                [{"kind": "methodology", "statement_id": "INVENTED", "field": None}],
+            )
+        self.assertEqual(selections, valid.model_dump()["selections"])
+        self.assertEqual(model.invoke.call_count, 1)
+
+    def test_repeated_invented_ids_remain_an_error(self):
+        invalid = SelectedEvidence(
+            selections=[SentenceSelection(kind="methodology", statement_id="INVENTED")]
+        )
+        model = Mock()
+        model.invoke.return_value = invalid
+        with (
+            patch("agents.extraction_agent.structured_llm", model),
+            self.assertRaisesRegex(ValueError, "unknown sentence IDs"),
+        ):
+            select_source_statements("Source", {"P1-S1"})
+        self.assertEqual(model.invoke.call_count, 2)
+
     def test_transient_calls_retry_but_validation_errors_do_not(self):
         operation = Mock(side_effect=[httpx.ConnectError("offline"), "ok"])
         with patch("agents.transport.time.sleep"):

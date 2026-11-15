@@ -1,6 +1,7 @@
 import { AutomaticReview } from "./AutomaticReview";
 import { ThinkingControl } from "./ThinkingControl";
 import { useEffect, useRef, useState } from "react";
+import { SelectionOutcome } from "./SelectionOutcome";
 import {
   ArrowRight,
   ArrowUp,
@@ -176,11 +177,16 @@ export function Conversation({
     if (working || busy) return;
     setWorking(true);
     try {
-      if (confirmation && !(confirmation.stage === "quality" && d.writing?.ready === false))
-        await request(`/reviews/${d.id}/confirm-step`, {
+      if (confirmation && !(confirmation.stage === "quality" && d.writing?.ready === false)) {
+        const result = await request<{status?: string}>(`/reviews/${d.id}/confirm-step`, {
           method: "POST",
           body: JSON.stringify({ token: confirmation.token, reviewer }),
         });
+        if (result.status === "no_evidence") {
+          await onSaved();
+          return;
+        }
+      }
       await onSaved();
       await onRun();
     } catch (e) {
@@ -395,7 +401,11 @@ export function Conversation({
               </div>
             </>
           )}
-          {automatic ? (
+          {d.selection_outcome && !busy ? (
+            <SelectionOutcome detail={d} onTab={onTab} onRun={async () => {
+              try { await onRun(); } catch(e) { onError((e as Error).message); }
+            }} />
+          ) : automatic ? (
             <AutomaticReview
               detail={d}
               reviewer={reviewer}

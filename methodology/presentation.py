@@ -91,11 +91,35 @@ def selection_summary(values):
 def appraisal_summary(notes, papers):
     titles = {p["id"].rsplit("/", 1)[-1]: p.get("title") or "Article" for p in papers}
     parts = [
-        "## Appraisal questions for scientific review",
-        "These questions are automated suggestions for the reviewer, not validated risk-of-bias ratings.",
+        "## Source-supported study appraisal proposals",
+        "Domain judgements are machine proposals under the configured rubric, not validated instrument assessments. Missing evidence remains unclear.",
     ]
     for pid, entry in notes.items():
         parts.append("### " + titles.get(pid, "Article awaiting metadata"))
+        if entry.get("domains"):
+            parts.append(
+                markdown_table(
+                    ["Domain", "Proposed judgement", "Rationale", "Source support"],
+                    [
+                        [
+                            d["question"],
+                            d["judgement"],
+                            d["rationale"],
+                            " ".join(
+                                s["text"]
+                                + (
+                                    f" (PDF p. {s['page_start']})"
+                                    if s.get("page_start")
+                                    else " (page not verified)"
+                                )
+                                for s in d.get("support", [])
+                            )
+                            or "Not found",
+                        ]
+                        for d in entry["domains"]
+                    ],
+                )
+            )
         if entry.get("notes"):
             parts.append("\n".join("- " + str(note) for note in entry["notes"]))
         if entry.get("error"):
