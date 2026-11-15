@@ -1,8 +1,8 @@
 {
   "review_id": "explainable_ai_in_ids_socs_f18d0395",
-  "recorded_at_utc": "2026-11-15T17:20:24.791426+00:00",
+  "recorded_at_utc": "2026-11-15T17:26:39.908482+00:00",
   "run_complete": false,
-  "scope": "Observed machine results for the XAI/IDS case study. No human-reference accuracy or time savings have been established. This is a bounded search, not an exhaustive systematic review.",
+  "scope": "Observed machine results and a three-record researcher thematic title/abstract check for the XAI/IDS case study. Human citation/extraction correctness and controlled time savings have not been established. This is a bounded search, not an exhaustive systematic review.",
   "configuration": {
     "protocol_revision": 3,
     "date_from": "2022-01-01",
@@ -48,20 +48,21 @@
     "simulated_reviewer_kappa": 0.5245762711864406,
     "full_text_decision_coverage": 0.5789473684210527,
     "full_text_access_rate": 0.7450980392156863,
-    "human_reference_sample_completed": 0,
-    "screening_precision": null,
-    "screening_recall": null,
-    "screening_f1": null,
+    "human_reference_sample_completed": 3,
+    "screening_precision": 1.0,
+    "screening_recall": 0.5,
+    "screening_f1": 0.6666666666666666,
     "citation_correctness": null,
     "extraction_correctness": null,
     "required_field_completeness": null,
-    "time_savings_fraction": null
+    "time_savings_fraction": null,
+    "screening_accuracy": 0.3333333333333333
   },
   "metric_notes": {
     "agreement": "Two prompt roles using the same model. Includes include, exclude and uncertain labels. Not independent human agreement.",
     "full_text_decision_coverage": "Definite include or exclude recommendations divided by assessed full texts; not accuracy.",
     "full_text_access_rate": "PDF availability among the retrieved unique records; not search recall.",
-    "human_metrics": "Null means not yet measured. The three-record human sample remains unlabelled.",
+    "human_metrics": "Three actual researcher title/abstract relevance decisions recorded. Strict scores are sample-only; citation, extraction and field-completeness ratings remain unassessed. Human time is an approximate aggregate; per-record timings remain null.",
     "index_count": "The completed run log recorded 1959 indexed passages. This is not a count of verified scientific claims."
   },
   "software_checks": {
@@ -87,8 +88,19 @@
   },
   "still_required": [
     "Complete and source-check the XAI manuscript and exports",
-    "Record real human reference decisions and comparable manual task times",
+    "Verify source citations, extraction and required fields; record comparable measured manual task times",
     "Add the final PRISMA figure and manuscript example to the README",
     "Submit the researcher-recorded video of no more than three minutes"
-  ]
+  ],
+  "human_reference": {
+    "file": "xai_human_screening_sample.json",
+    "sample_size": 3,
+    "scope": "Researcher title/abstract thematic eligibility decisions. Not full-text evidence or citation verification.",
+    "sampling": "Three purposefully selected records; not representative of all 51 retrieved records.",
+    "strict_decision_coverage": 0.3333333333333333,
+    "retention_recall": 1.0,
+    "human_total_seconds_approximate": 120,
+    "automated_screening_seconds": 47.533031367998774,
+    "timing_comparison_validated": false
+  }
 }
