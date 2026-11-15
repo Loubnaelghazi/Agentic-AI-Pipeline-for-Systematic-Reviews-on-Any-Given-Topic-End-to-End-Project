@@ -1135,58 +1135,6 @@ docker compose exec backend python -m evaluation.benchmark \
 
 The benchmark rejects missing human screening labels and mismatched sample identifiers. Missing timings leave time savings unknown. Report the question, protocol, sample size, sources, model, hardware, and annotation method alongside every result.
 
-### Evaluate passage retrieval
-
-Create `retrieval-labels.json` containing exact relevant quotations that occur in the indexed source passages:
-
-```json
-[
-  {
-    "query": "Describe the evaluation dataset and test split",
-    "source": "PAPER_ID.txt",
-    "relevant_quotes": ["An exact quotation copied from the source passage."],
-    "reviewer": "Researcher name"
-  }
-]
-```
-
-Save it under `data/evaluations/sample-01/`, then run:
-
-```bash
-docker compose exec backend python -m evaluation.retrieval \
-  REVIEW_ID \
-  /data/evaluations/sample-01/retrieval-labels.json \
-  /data/evaluations/sample-01/retrieval-results.json \
-  --models qwen3-embedding:0.6b --k 5
-```
-
-The evaluator compares dense, hybrid, and reranked retrieval on the annotated queries. It records indexing time and retrieval latency. Use installed embedding models only. This is a within-paper retrieval evaluation.
-
-### Inspect source and export integrity
-
-```bash
-docker compose exec backend python -m evaluation.audit_review \
-  REVIEW_ID /data/evaluations/integrity-01
-```
-
-The inspection records available stage state, source checks, Word archive integrity, writing status, selection count checks, search coverage notes, reviewer agreement, and execution traces. It does not create human annotations. Optional `--inference --profile prediction` adds a separate machine appraisal and criticism audit; it uses the configured model and should run when the workflow is idle.
-
-### Optional quantitative preparation
-
-The system does not pool incompatible study results automatically. An optional fixed-effect inverse-variance tool accepts explicitly human-verified estimates with independent study IDs and a documented comparability assessment.
-
-```bash
-docker compose exec backend python -m evaluation.meta_analysis \
-  /data/evaluations/verified-estimates.csv \
-  --reviewer "Researcher name" \
-  --comparability-reason "Documented assessment of study independence and comparable estimates" \
-  --output /data/evaluations/pooled-result.json
-```
-
-Input columns are `study_id`, `outcome`, `effect_measure`, `comparison_group`, `human_verified`, `effect`, and `standard_error`. All rows must use compatible definitions and an appropriate common analysis scale. This optional utility is not a complete meta-analysis workflow.
-
-
-
 ## 13. Repository structure
 
 ```text
@@ -1214,15 +1162,6 @@ agentic-review/
 └── README.md               # Project description, setup, user guide, and evaluation
 ```
 
-Useful commands:
-
-```bash
-docker compose ps
-docker compose logs --tail=100 backend
-docker compose logs --tail=100 frontend
-ollama list
-ollama ps
-```
 
 ## 14. Scope and limitations
 
