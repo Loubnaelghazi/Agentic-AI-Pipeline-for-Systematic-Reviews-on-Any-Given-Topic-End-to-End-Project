@@ -1075,7 +1075,6 @@ The manuscript contains a structured abstract, introduction, methods, results, s
 
 **How to inspect this example:** read the selection diagram, compare a result paragraph and its citation with the original source in the local application, then inspect the separate technical report for processing details. This demonstration is an **AI-generated draft for scientific review**. Original source PDFs and local processing records are not distributed with the example.
 
-A separate video of no more than three minutes, recorded by the researcher, demonstrates the workflow and its outputs. These illustrations complement the numerical results and human reference checks.
 
 ### Metric definitions
 
