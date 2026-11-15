@@ -52,6 +52,8 @@ The project addresses the following objectives:
 
 The architecture accepts different research topics. Users must adapt search terms, eligibility criteria, extraction fields, and appraisal domains to their subject.
 
+**Individual project scope.** This submission documents system integration, local model configuration, Docker deployment, review-workflow improvements, source-verification controls, interface refinement, software testing and technical documentation. The XAI/IDS case study records the evaluation of the resulting system. External libraries and scientific sources remain identified separately; human-reference assessment and the final demonstration are reported according to their actual completion status.
+
 ## 2. Features and scope
 
 | Area | What Folio provides |
@@ -987,6 +989,7 @@ Uncertain reports remain provisional. Their findings require particular attentio
 | Evaluation item | Observed result | Interpretation |
 | --- | --- | --- |
 | Simulated title/abstract reviewer agreement | 40 of 51 pairs agree: **78.4%** | Both roles use the same model with different prompts; agreement does not prove correctness |
+| Simulated reviewer Cohen's kappa | **0.525** on 51 pairs | Chance-adjusted agreement over include, exclude and uncertain labels; not independent human validation |
 | Reviewer disagreements | 11 of 51 pairs | Conflicting assessments are retained for further assessment rather than treated as definite agreement |
 | Full-text decision coverage | 22 of 38: **57.9%** | 21 include plus 1 exclude recommendation; 16 remain uncertain |
 | Full-text access rate | 38 of 51: **74.5%** | Measures PDF availability within this retrieved sample, not search recall |
@@ -996,6 +999,28 @@ Uncertain reports remain provisional. Their findings require particular attentio
 | End-to-end manuscript quality | Assessment pending | Requires the completed manuscript and final source checks |
 
 These preliminary measurements demonstrate recorded processing and expose unresolved cases. They do not establish exhaustive coverage, validated risk-of-bias assessment or a proven reduction in manual effort. The metric definitions and evaluation commands below explain how to complete the remaining measurements.
+
+The [case-study results file](evaluation/xai_case_study_results.json) records these counts, metric values, configuration and input-file hashes. Unmeasured human-reference metrics are explicitly `null`. The software verification run contains **131 backend tests: 130 passed and 1 skipped**, plus **24 passing frontend tests**. Python lint checks and the frontend production build also passed. The build reports a bundle-size advisory. These checks demonstrate software behavior under the tested conditions; they do not establish the scientific accuracy of the XAI review.
+
+#### Coverage of the project requirements
+
+| Requirement from the project brief | Implementation and available evidence | What remains to demonstrate |
+| --- | --- | --- |
+| Modular multi-agent orchestration | Specialized LangChain roles; LangGraph for Guided mode and a shared-stage runner for automatic execution; Sections 3–5 | Complete final XAI writing and review |
+| Configurable protocol and search | Versioned criteria, source-specific queries, dates and source limits; Section 12 case-study protocol | Researcher verification of methodological suitability and search coverage |
+| Multi-source retrieval and deduplication | OpenAlex, PubMed and arXiv; 61 records before deduplication and 51 unique records | Search exhaustiveness is not established by this bounded test |
+| Title/abstract and full-text screening | Two simulated reviewer roles, source-linked full-text proposals and recorded rationales | Human-reference labels for accuracy, precision, recall and F1 |
+| Hybrid RAG, reranking and compression | Dense/sparse fusion, optional model reranking and bounded source passages; Section 6 | Reranking produced invalid IDs in this run and used the logged hybrid fallback; its relevance benefit has not been demonstrated |
+| Extraction and study appraisal | 37 extraction records and 37 machine appraisal records, with explicit evidence gaps | Human checks of extracted information; the project rubric is not a validated risk-of-bias instrument |
+| Synthesis, manuscript and PRISMA exports | Scientific writer, separate technical report, diagram generation and Markdown/DOCX/BibTeX utilities; Sections 10–11 | Final XAI manuscript, PRISMA artifacts and export inspection |
+| Human oversight | Guided decision gates and automatic-mode final draft acceptance; no fabricated intermediate approvals | Record actual researcher judgements; an automatic case study does not demonstrate every Guided interaction |
+| Memory, versioning and observability | Saved workflow state, protocol history, decision traces, source passages and resumable checkpoints | Repeated source verification and model retries remain a performance limitation |
+| Quantitative synthesis where applicable | Optional verified-estimate preparation and pooling utility | No meta-analysis claimed: compatible verified estimates and a comparability assessment are required |
+| Accuracy, completeness, consistency and time savings evaluation | Recorded consistency and coverage measures; human-label and retrieval evaluators; definitions below | Human accuracy/completeness ratings and a measured manual comparison; no proven time-saving claim |
+| Source code, technical report and user guide | GitHub repository, this README, Docker setup, architecture diagrams and screenshots | Keep the final case-study results synchronized with the completed run |
+| Video demonstration of at most three minutes | Prepared separately by the researcher | Record and submit the video |
+
+**Submission status:** implementation and documentation are available, but the XAI end-to-end result and human-reference evaluation are still incomplete. Available software tests, source matching and model-role agreement must not be presented as proof that all success criteria have been met.
 
 #### Case study screenshots
 

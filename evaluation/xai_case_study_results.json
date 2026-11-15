@@ -1,0 +1,94 @@
+{
+  "review_id": "explainable_ai_in_ids_socs_f18d0395",
+  "recorded_at_utc": "2026-11-15T17:20:24.791426+00:00",
+  "run_complete": false,
+  "scope": "Observed machine results for the XAI/IDS case study. No human-reference accuracy or time savings have been established. This is a bounded search, not an exhaustive systematic review.",
+  "configuration": {
+    "protocol_revision": 3,
+    "date_from": "2022-01-01",
+    "date_to": "2025-12-31",
+    "sources": [
+      "openalex",
+      "pubmed",
+      "arxiv"
+    ],
+    "records_per_query": 10,
+    "model": "qwen3.5:4b",
+    "embedding_model": "qwen3-embedding:0.6b",
+    "mode": "automatic"
+  },
+  "selection": {
+    "records_identified": 61,
+    "duplicates_removed": 10,
+    "records_screened": 51,
+    "title_abstract_recommendations": {
+      "include": 32,
+      "uncertain": 19
+    },
+    "full_texts_retrieved": 38,
+    "full_texts_unavailable": 13,
+    "full_text_recommendations": {
+      "uncertain": 16,
+      "include": 21,
+      "exclude": 1
+    },
+    "retained_for_extraction": 37
+  },
+  "processing": {
+    "indexed_passages": 1959,
+    "extraction_records": 37,
+    "records_with_retained_quotes": 36,
+    "completed_without_verified_quotes": 1,
+    "machine_appraisal_records": 37
+  },
+  "metrics": {
+    "simulated_reviewer_pairs": 51,
+    "simulated_reviewer_agreements": 40,
+    "simulated_reviewer_agreement": 0.7843137254901961,
+    "simulated_reviewer_kappa": 0.5245762711864406,
+    "full_text_decision_coverage": 0.5789473684210527,
+    "full_text_access_rate": 0.7450980392156863,
+    "human_reference_sample_completed": 0,
+    "screening_precision": null,
+    "screening_recall": null,
+    "screening_f1": null,
+    "citation_correctness": null,
+    "extraction_correctness": null,
+    "required_field_completeness": null,
+    "time_savings_fraction": null
+  },
+  "metric_notes": {
+    "agreement": "Two prompt roles using the same model. Includes include, exclude and uncertain labels. Not independent human agreement.",
+    "full_text_decision_coverage": "Definite include or exclude recommendations divided by assessed full texts; not accuracy.",
+    "full_text_access_rate": "PDF availability among the retrieved unique records; not search recall.",
+    "human_metrics": "Null means not yet measured. The three-record human sample remains unlabelled.",
+    "index_count": "The completed run log recorded 1959 indexed passages. This is not a count of verified scientific claims."
+  },
+  "software_checks": {
+    "backend": {
+      "tests_run": 131,
+      "passed": 130,
+      "skipped": 1,
+      "failed": 0
+    },
+    "frontend": {
+      "tests_run": 24,
+      "passed": 24,
+      "failed": 0
+    },
+    "python_lint": "passed",
+    "frontend_build": "passed; Vite reports a bundle-size advisory"
+  },
+  "input_sha256": {
+    "protocol.json": "42a5343abe4808f43428216c32c9c08dce8d92ce1a6077e5c1add760f51962f1",
+    "papers.json": "86f62c021d8953ab874b18e4bd78e2d39b2efbdd5e98ee1a5dd062ec5896f242",
+    "outputs/retrieved_records.json": "c615a1eb6d3fa3da7629065963c75ded7a88d07e91eb9744e4bb94d34a220655",
+    "outputs/automatic_eligibility.json": "6171d0e3e4e51c3021c85a5529a5c6bbf814a456982a424413c3b73081a2721c"
+  },
+  "still_required": [
+    "Complete and source-check the XAI manuscript and exports",
+    "Record real human reference decisions and comparable manual task times",
+    "Add the final PRISMA figure and manuscript example to the README",
+    "Submit the researcher-recorded video of no more than three minutes"
+  ]
+}
