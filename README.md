@@ -25,7 +25,7 @@ The main output is a **scientific manuscript about the research topic**. A separ
 9. [User guide](#9-user-guide)
 10. [Reports and exported files](#10-reports-and-exported-files)
 11. [Evidence checks and PRISMA reporting](#11-evidence-checks-and-prisma-reporting)
-12. [Evaluation methodology and metrics](#12-evaluation-methodology-and-metrics)
+12. [Tests, case study and evaluation](#12-tests-case-study-and-evaluation)
 13. [Repository structure](#13-repository-structure)
 14. [Scope and limitations](#14-scope-and-limitations)
 15. [Conclusion](#15-conclusion)
@@ -689,6 +689,17 @@ sh scripts/start-local.sh --wait
 
 The helper refreshes the configured private WSL address when the corresponding systemd override exists. It also recreates the backend if Docker Desktop restores an empty data bind mount. It does not install Docker, Ollama, models, or the systemd override on a new machine.
 
+For a memory-constrained WSL installation using the bundled `llama-server`, [scripts/ollama-memory.conf.example](scripts/ollama-memory.conf.example) provides an optional Ollama systemd drop-in. It caps the reusable prompt cache at 256 MiB and limits per-slot context checkpoints to two. These are inference caches, separate from the review checkpoints saved by Folio. Verify the `LLAMA_ARG_*` options against the installed engine version before applying the file. This host-service configuration is not activated by Compose or `.env`.
+
+```bash
+# Optional host configuration; apply when no review is running.
+sudo install -D -m 0644 scripts/ollama-memory.conf.example /etc/systemd/system/ollama.service.d/20-folio-memory.conf
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
+
+Monitor host RAM and swap as well as GPU memory. Exhausted system memory can make inference exceed request timeouts even while model layers are on the GPU. Restarting a failed review alone does not address that resource condition.
+
 ## 8. Configuration
 
 [.env.example](.env.example) documents the environment settings. Review-specific settings are selected in the browser and saved with the review.
@@ -852,11 +863,118 @@ The checklist provides review items and suggested manuscript locations. Users as
 
 Reports and independent studies are different units. Several reports may describe one study. Confirmed study identifiers are needed before interpreting report counts as independent study counts.
 
-## 12. Evaluation methodology and metrics
+## 12. Tests, case study and evaluation
 
 The evaluation separates **software correctness** from **scientific performance**. Passing a regression test does not measure screening accuracy on real literature.
 
 The academic evaluation addresses completeness, accuracy, inter-agent consistency, and time savings against a manual reference. The tools calculate results from actual annotations; this README does not supply assumed scientific scores.
+
+### Case study: explainable AI for intrusion detection
+
+This case study follows a real review from the research question to the generated manuscript. It tests whether the agents can search, select, read and organize scientific evidence in one saved workflow.
+
+**Status recorded on 15 November 2026:** search, title/abstract screening, full-text screening and RAG indexing are complete. Evidence extraction is in progress. The final manuscript, final PRISMA figure and human-reference evaluation are not yet available for this run. The tables below describe the completed selection stages, not a completed systematic review.
+
+#### Research question and configuration
+
+> Which explainable AI techniques have been applied to intrusion detection systems, how have they been evaluated in laboratory or operational settings, and what evidence and gaps concern their use in Security Operations Centers?
+
+An **intrusion detection system (IDS)** detects suspicious activity in network or host data. **Explainable AI (XAI)** helps people understand model predictions. A **Security Operations Center (SOC)** is the operational setting in which analysts investigate security alerts. The review studies XAI methods for IDS and examines their possible value for SOC analysts.
+
+| Setting | Value used in this case study |
+| --- | --- |
+| Execution mode | Automated draft, with final researcher review |
+| Publication period | 1 January 2022 to 31 December 2025 |
+| Academic sources | OpenAlex, PubMed and arXiv |
+| Search cap | 10 records per query and source; this is a bounded demonstration |
+| Generation model | `qwen3.5:4b`, temperature `0.0` |
+| Reasoning | Off for ordinary generation; separate careful eligibility audits enabled |
+| Embedding model | `qwen3-embedding:0.6b`, running on the CPU |
+| Generation hardware | NVIDIA GeForce RTX 4060 Laptop GPU, 8 GB VRAM |
+| Deployment | Docker frontend and backend; Ollama on the host |
+
+#### Inclusion and exclusion criteria
+
+The researcher clarified that laboratory studies should be eligible. A real SOC deployment is therefore **not required**. Detection performance, explanation quality and analyst outcomes are compared when available; each paper does not have to report all three.
+
+| Type | Criterion |
+| --- | --- |
+| Include | Applies, evaluates or systematically reviews explainable or interpretable AI methods for IDS |
+| Include | Reports empirical findings or a systematic synthesis, using laboratory datasets or operational environments |
+| Include | Article body written in English |
+| Exclude | Evaluated application concerns only tasks other than intrusion detection |
+| Exclude | XAI is mentioned only as background or future work, without application, evaluation or systematic analysis for IDS |
+
+An unavailable PDF is recorded as an access failure, not a scientific exclusion. Missing or conflicting evidence leads to an **uncertain** recommendation rather than an invented inclusion or exclusion.
+
+The first search was too restrictive because it required SOC-related terms. After the scope clarification, the protocol was revised and the search was extended using two main concepts:
+
+```text
+("explainable AI" OR "XAI" OR "interpretable machine learning" OR "SHAP" OR "LIME")
+AND
+("intrusion detection" OR "network intrusion detection" OR "IDS")
+```
+
+The connectors translate these concepts into source-specific queries. Earlier searches and the additional searches remain in the search log. Existing PDFs were reused, while screening was repeated under the revised protocol. The history preserves the change; the scope clarification did not create a fictitious human protocol approval.
+
+#### Recorded search and selection results
+
+| Measure | Recorded result | Meaning |
+| --- | ---: | --- |
+| Records returned across the original and additional searches | 61 | 40 from OpenAlex, 10 from PubMed and 11 from arXiv, before deduplication |
+| Duplicate records removed | 10 | Repeated records merged before screening |
+| Unique records screened | 51 | Distinct bibliographic records, not confirmed independent studies |
+| Title/abstract recommendations | 32 include; 19 uncertain | No record was definitively excluded at this stage |
+| Full texts retrieved and assessed | 38 | Original PDFs available for source checks |
+| Full texts unavailable | 13 | Access failures kept separate from exclusions |
+| Full-text include recommendations | 21 | Machine recommendations under the revised criteria |
+| Full-text uncertain recommendations | 16 | Eligibility remains unresolved |
+| Full-text exclusions | 1 | Source-audited exclusion under the protocol |
+| Reports retained for attempted extraction | 37 | 21 include recommendations plus 16 provisional cases |
+| Passages indexed for RAG | 1,959 | Completed passage index; not a count of validated claims |
+
+The counts balance: **61 − 10 = 51**, **38 + 13 = 51**, and **21 + 16 + 1 = 38**. These checks establish arithmetic consistency only. They do not establish that every scientific decision is correct.
+
+One concrete exclusion is *Development of machine learning models to identify potentially active compounds against tuberculosis.* Its evaluated application concerns drug discovery rather than intrusion detection. This example illustrates why source retrieval alone is insufficient: screening must check the actual application, not just the presence of machine-learning terms.
+
+#### What each stage contributes
+
+| Stage | Action in this case study | Output or current status |
+| --- | --- | --- |
+| Protocol and search strategy | Define the question, eligibility criteria, years, sources and search concepts | Revised protocol and recorded source-specific queries |
+| Retrieval and deduplication | Search the three sources, retain metadata and merge duplicates | 51 unique records with source provenance |
+| Title/abstract screening | Compare two model-role assessments against the protocol | 32 include and 19 uncertain recommendations |
+| Full-text acquisition | Obtain original PDFs and record access failures | 38 retrieved PDFs; 13 unavailable reports |
+| Full-text screening | Inspect article text, match quotations and audit disputed criteria | 21 include, 16 uncertain and 1 exclude recommendation |
+| RAG indexing | Split text into passages and build the retrieval index | 1,959 indexed passages |
+| Evidence extraction | Collect findings and source passages; check evidence support | In progress; a saved extraction is not human validation |
+| Study appraisal | Propose domain judgements under the configured project rubric | Pending; not a validated risk-of-bias assessment |
+| Synthesis and writing | Compare evidence and draft the scientific sections, tables and references | Pending; no final manuscript result claimed yet |
+| Quality checks and export | Check the draft and export the manuscript, technical report and PRISMA artifacts | Pending for this run |
+| Researcher review | Inspect the final draft and independently verify a reference sample | Pending |
+
+Uncertain reports remain provisional. Their findings require particular attention during final review and must not be presented as confirmed eligible studies. When interpreting survey articles, results discussed from other authors must also be distinguished from the survey's own contribution; matching a quotation alone cannot guarantee correct attribution.
+
+#### Evaluation results available so far
+
+| Evaluation item | Observed result | Interpretation |
+| --- | --- | --- |
+| Simulated title/abstract reviewer agreement | 40 of 51 pairs agree: **78.4%** | Both roles use the same model with different prompts; agreement does not prove correctness |
+| Reviewer disagreements | 11 of 51 pairs | Conflicting assessments are retained for further assessment rather than treated as definite agreement |
+| Full-text decision coverage | 22 of 38: **57.9%** | 21 include plus 1 exclude recommendation; 16 remain uncertain |
+| Full-text access rate | 38 of 51: **74.5%** | Measures PDF availability within this retrieved sample, not search recall |
+| Screening accuracy, precision, recall and F1 | Not yet measured against human labels | Require independently recorded reference decisions |
+| Citation, extraction and completeness ratings | Human assessment pending | Require reading the source passages and checking the extracted content |
+| Time savings versus manual work | Not yet measured | Require a comparable manual task and actual timings; pauses and separate runs prevent using a single interface timer as total execution time |
+| End-to-end manuscript quality | Assessment pending | Requires the completed manuscript and final source checks |
+
+These preliminary measurements demonstrate recorded processing and expose unresolved cases. They do not establish exhaustive coverage, validated risk-of-bias assessment or a proven reduction in manual effort. The metric definitions and evaluation commands below explain how to complete the remaining measurements.
+
+#### Report illustrations and final demonstration
+
+The report will use a small set of readable figures with explanatory captions: the protocol and criteria, an example screening decision, access to the original PDFs, and the final PRISMA diagram and manuscript table. The current PDF panel displays **38 available PDFs out of 51 records**; this is an access count, not the final inclusion count.
+
+Final screenshots, a manuscript excerpt and the completed-run results will be added after writing and verification finish. A separate video of no more than three minutes will demonstrate the saved workflow and its outputs. Screenshots and video illustrate the evaluation; they do not replace the numerical results or human reference checks.
 
 ### Metric definitions
 
