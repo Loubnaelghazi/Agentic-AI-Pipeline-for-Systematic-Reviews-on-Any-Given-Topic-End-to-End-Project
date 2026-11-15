@@ -327,6 +327,17 @@ def render_selection_flow(path, values):
         "teal",
         110,
     )
+    if values.get("reports_retained_without_usable_extraction"):
+        box(
+            655,
+            985,
+            300,
+            "Without usable extraction",
+            values["reports_retained_without_usable_extraction"],
+            "Retained report; not an exclusion",
+            "amber",
+            110,
+        )
     svg.extend(
         [
             '<text x="655" y="834" font-family="sans-serif" font-size="16" font-weight="700" fill="#172b4d">How to read this diagram</text>',

@@ -1061,7 +1061,15 @@ The progress card identifies the current activity: checking the eligibility of a
 
 The **Papers & PDFs** panel lets the researcher search publications by title or year, inspect authors and publication dates, open a saved original PDF, and follow the source record. Unavailable PDFs are explicitly identified rather than silently removed. This supports source checking and helps distinguish an access problem from a scientific exclusion. **38 available PDFs does not mean 38 included studies**: eligibility is assessed separately, and some reports remain uncertain or are excluded.
 
-The final PRISMA diagram and a manuscript excerpt will be added after writing and verification finish. A separate video of no more than three minutes will demonstrate the workflow and its outputs. These illustrations complement the numerical results and human reference checks.
+**Search and selection diagram**
+
+![PRISMA-oriented XAI/IDS selection flow: 61 records, 51 unique records, 38 retrieved reports, 21 include recommendations, 16 uncertain reports, 36 usable extractions and one evidence gap](assets/figures/xai-selection-flow.svg)
+
+*Figure 12. PRISMA-oriented selection flow for the automatic XAI/IDS case study. Counts describe bibliographic records and reports, not confirmed independent studies. The diagram is exported separately for readability; its [count data](assets/figures/xai-selection-counts.json) and [PNG version](assets/figures/xai-selection-flow.png) are available.*
+
+The sources returned **61 records**. Removing **10 duplicates** left **51** for title/abstract screening. Full texts were retrieved for **38** reports; **13** remained unavailable. Full-text assessment produced **21 include recommendations**, **16 uncertain cases** and **1 exclusion**. The uncertain cases were retained provisionally. Of the **37 reports processed for extraction**, **36 contain retained source quotations** and **one contains no verified quotation**. The last two boxes keep this evidence gap separate from scientific exclusions. The diagram does not certify PRISMA compliance, human validation or completion of scientific writing.
+
+A manuscript excerpt will be added after writing and verification finish. A separate video of no more than three minutes will demonstrate the workflow and its outputs. These illustrations complement the numerical results and human reference checks.
 
 ### Metric definitions
 

@@ -72,6 +72,8 @@ def automatic_flow(review_id):
         if "error" in record:
             failures.append(record["paper_id"])
             continue
+        if not record.get("claims") and not record.get("numerical_results"):
+            continue  # A completed extraction can contain no usable evidence.
         validate_record_source(review_id, record)
         valid.append(record)
     values = {

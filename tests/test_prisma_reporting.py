@@ -183,6 +183,25 @@ class PrismaReportingTests(unittest.TestCase):
         self.assertEqual(flow["reports_not_retrieved"], 1)
         self.assertEqual(flow["reports_excluded"], 1)
 
+    def test_completed_empty_extraction_is_not_counted_as_usable_evidence(self):
+        self.case.run_automatic()
+        records = read_json(self.out / "evidence.json", [])
+        records[0].update(
+            claims=[],
+            numerical_results=[],
+            extraction_complete=True,
+            grounding_status="no_verified_quotes",
+        )
+        write_json(self.out / "evidence.json", records)
+        flow, failures = automatic_flow("fixture")
+        self.assertEqual(flow["reports_in_synthesis"], 0)
+        self.assertEqual(flow["reports_retained_without_usable_extraction"], 1)
+        self.assertEqual(flow["reports_excluded"], 0)
+        self.assertEqual(failures, [])
+        self.assertIn(
+            "Without usable extraction", (self.out / "prisma_flow.svg").read_text()
+        )
+
     def test_missing_provenance_is_unknown_and_flow_tampering_invalidates_result(self):
         self.case.run_automatic()
         flow = read_json(self.out / "prisma_flow.json", {})

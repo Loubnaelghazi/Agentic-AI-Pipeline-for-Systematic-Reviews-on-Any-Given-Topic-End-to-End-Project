@@ -1,0 +1,39 @@
+{
+  "mode": "automatic",
+  "reporting_version": "scientific-and-technical-v2.2",
+  "records_identified": 61,
+  "records_by_source": {
+    "openalex": 40,
+    "arxiv": 11,
+    "pubmed": 10
+  },
+  "duplicates_removed": 10,
+  "unique_records": 51,
+  "records_screened": 51,
+  "records_not_screened": 0,
+  "records_excluded": 0,
+  "screening_uncertain_forwarded": 19,
+  "reports_sought": 51,
+  "reports_not_sought": 0,
+  "reports_retrieved": 38,
+  "reports_not_retrieved": 13,
+  "reports_assessed": 38,
+  "reports_not_assessed": 0,
+  "reports_excluded": 1,
+  "exclusion_reasons": {
+    "Source evidence supports exclusion: The evaluated application concerns only tasks other than intrusion detection.": 1
+  },
+  "reports_included": 21,
+  "eligibility_uncertain": 16,
+  "reports_in_synthesis": 36,
+  "reports_retained_without_usable_extraction": 1,
+  "studies_included": null,
+  "selection_method": "Machine proposals; uncertain full texts retained provisionally and counted separately.",
+  "note": "Reports are not confirmed independent studies. Acquisition and extraction failures are not scientific exclusions. No PRISMA compliance is certified.",
+  "count_checks": {
+    "deduplication_balances": true,
+    "screening_balances": true,
+    "acquisition_balances": true,
+    "eligibility_balances": true
+  }
+}
