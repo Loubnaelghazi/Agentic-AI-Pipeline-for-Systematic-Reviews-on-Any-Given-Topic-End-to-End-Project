@@ -271,7 +271,7 @@ class ScientificWritingTests(unittest.TestCase):
         self.assertNotIn(bad["text"], section_prose(value, "results"))
         self.assertIn(good["text"], section_prose(value, "results"))
         self.assertIn("omitted", value["sections"]["results"]["issues"][0])
-        self.assertEqual(len(value["sections"]["results"]["attempt_history"]), 2)
+        self.assertEqual(len(value["sections"]["results"]["attempt_history"]), 1)
 
     def test_quarantined_proposal_requires_a_new_audit_before_reuse(self):
         value = audited_writing("fixture", self.protocol, [self.record])
@@ -528,6 +528,35 @@ class ScientificWritingTests(unittest.TestCase):
                 facts,
                 "abstract",
             )
+
+    def test_result_selection_prioritizes_outcomes_over_hardware_tables(self):
+        from agents.writing_agent import select_facts
+
+        base = self.packet["facts"][self.key]
+        facts = {
+            f"W1:H{i}": {
+                **base,
+                "text": "| Component | Specification | Workstation CPU | Intel |",
+            }
+            for i in range(5)
+        }
+        facts["W1:RESULT"] = {**base, "text": "| Model | F1 | Proposed | 0.80 |"}
+        chosen = select_facts({**self.packet, "facts": facts}, "results")
+        self.assertIn("W1:RESULT", chosen)
+        self.assertEqual(next(iter(chosen)), "W1:RESULT")
+
+    def test_concise_abstract_can_summarize_a_subset_but_results_require_coverage(self):
+        value = audited_writing("fixture", self.protocol, [self.record])
+        facts = {
+            **value["facts"],
+            "W2:Q1": {**value["facts"][self.key], "paper_id": "W2"},
+        }
+        self.assertTrue(
+            saved_section_valid(value["sections"]["abstract"], facts, "abstract")
+        )
+        self.assertFalse(
+            saved_section_valid(value["sections"]["results"], facts, "results")
+        )
 
     def test_results_cannot_silently_drop_a_study_with_primary_findings(self):
         value = audited_writing("fixture", self.protocol, [self.record])

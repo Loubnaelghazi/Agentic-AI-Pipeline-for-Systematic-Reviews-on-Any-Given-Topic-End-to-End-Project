@@ -434,6 +434,8 @@ def quality(state):
         require_protocol(state["review_id"]).model_dump(mode="json"),
         valid,
         state["report"],
+        writing=read_json(output(state, "scientific_manuscript.json"), {}),
+        checkpoint_path=output(state, "scientific_critic_progress.json"),
     )
     write_json(output(state, "scientific_quality.json"), scientific)
     result["scientific_critic"] = scientific

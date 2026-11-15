@@ -9,7 +9,12 @@ from agents.appraisal_agent import (
     propose_appraisal,
     validate_proposal,
 )
-from agents.scientific_qa import locate_findings, review_manuscript
+from agents.scientific_qa import (
+    Criticism,
+    locate_findings,
+    review_manuscript,
+    study_excerpt,
+)
 from evaluation.benchmark import evaluate
 from methodology.appraisal_profiles import apply_profile
 from methodology.protocol import Protocol, strategies
@@ -110,6 +115,69 @@ class SourceAppraisalTests(unittest.TestCase):
 
 
 class LocatedCriticTests(unittest.TestCase):
+    def test_study_excerpt_does_not_mix_publications_or_joint_paragraphs(self):
+        writing = {
+            "facts": {"W1:Q1": {"paper_id": "W1"}, "W2:Q1": {"paper_id": "W2"}},
+            "sections": {
+                "results": {
+                    "paragraphs": [
+                        {"text": "First study result.", "evidence_ids": ["W1:Q1"]},
+                        {"text": "Second study result.", "evidence_ids": ["W2:Q1"]},
+                        {"text": "Joint summary.", "evidence_ids": ["W1:Q1", "W2:Q1"]},
+                    ]
+                }
+            },
+        }
+        self.assertEqual(study_excerpt(writing, "W1"), "First study result.")
+        self.assertEqual(study_excerpt(writing, "W2"), "Second study result.")
+
+    def test_critic_sends_only_source_mapped_paragraphs_to_each_study_audit(self):
+        writing = {
+            "facts": {
+                "W1:Q1": {
+                    "paper_id": "W1",
+                    "kind": "main_findings",
+                    "text": "First study result.",
+                },
+                "W2:Q1": {
+                    "paper_id": "W2",
+                    "kind": "main_findings",
+                    "text": "Second study result.",
+                },
+            },
+            "sections": {
+                "results": {
+                    "paragraphs": [
+                        {"text": "First study result.", "evidence_ids": ["W1:Q1"]},
+                        {"text": "Second study result.", "evidence_ids": ["W2:Q1"]},
+                    ]
+                }
+            },
+        }
+        records = [
+            {"paper_id": pid, "claims": [{"kind": "main_findings", "quote": text}]}
+            for pid, text in [
+                ("W1", "First study result."),
+                ("W2", "Second study result."),
+            ]
+        ]
+        client = MagicMock()
+        client.with_structured_output.return_value.invoke.return_value = Criticism(
+            findings=[]
+        )
+        with patch("agents.scientific_qa.chat_model", return_value=client):
+            value = review_manuscript(
+                {}, records, "First study result. Second study result.", writing=writing
+            )
+        prompts = [
+            call.args[0]
+            for call in client.with_structured_output.return_value.invoke.call_args_list
+        ]
+        self.assertIn("First study result.", prompts[0])
+        self.assertNotIn("Second study result.", prompts[0])
+        self.assertNotIn("First study result.", prompts[1])
+        self.assertTrue(value["completed"])
+
     def test_fabricated_manuscript_or_evidence_findings_are_quarantined(self):
         record = {"paper_id": "W1", "claims": [{"quote": "Accuracy was 80 percent."}]}
         finding = {

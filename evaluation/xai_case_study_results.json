@@ -69,8 +69,8 @@
   },
   "software_checks": {
     "backend": {
-      "tests_run": 131,
-      "passed": 130,
+      "tests_run": 137,
+      "passed": 136,
       "skipped": 1,
       "failed": 0
     },

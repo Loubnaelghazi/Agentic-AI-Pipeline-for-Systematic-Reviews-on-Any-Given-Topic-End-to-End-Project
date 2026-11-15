@@ -2,7 +2,9 @@
 
 import hashlib
 import json
+from collections import OrderedDict
 from datetime import UTC, datetime
+from threading import Lock
 from typing import Literal
 
 import pymupdf
@@ -13,6 +15,8 @@ from rag.provenance import PaperSource, normalize
 from storage.review_manager import get_review_path, write_json
 
 KINDS = ("research_objective", "methodology", "main_findings", "limitations")
+_SOURCE_CHECKS = OrderedDict()
+_SOURCE_CHECK_LOCK = Lock()
 
 
 def digest(value):
@@ -40,6 +44,29 @@ def source_fingerprint(folder, paper_id):
 def validate_record_source(review_id, record):
     claims = validate_record(record, review_id)
     folder = get_review_path(review_id) / "papers"
+    source_identity = source_fingerprint(folder, record["paper_id"])
+    identity = digest(
+        {
+            "folder": str(folder.resolve()),
+            "source": source_identity,
+            "record": {
+                k: record.get(k)
+                for k in (
+                    "review_id",
+                    "paper_id",
+                    "evidence_version",
+                    "claims",
+                    "supporting_passages",
+                    "source_tables",
+                    "numerical_results",
+                )
+            },
+        }
+    )
+    with _SOURCE_CHECK_LOCK:
+        if identity in _SOURCE_CHECKS:
+            _SOURCE_CHECKS.move_to_end(identity)
+            return claims
     pdf = folder / f"{record['paper_id']}.pdf"
     if pdf.is_file():
         original = PaperSource(pdf)
@@ -104,6 +131,14 @@ def validate_record_source(review_id, record):
             for passage in record["supporting_passages"]
         ):
             raise ValueError("Passage no longer matches the original full text")
+    if source_fingerprint(folder, record["paper_id"]) != source_identity:
+        raise ValueError(
+            "Original source changed during verification; retry against the current file"
+        )
+    with _SOURCE_CHECK_LOCK:
+        _SOURCE_CHECKS[identity] = True
+        if len(_SOURCE_CHECKS) > 256:
+            _SOURCE_CHECKS.popitem(last=False)
     return claims
 
 

@@ -664,8 +664,19 @@ def run_review(review_id):
             )
         issues.append("PRISMA reporting checklist needs human review.")
         protocol = load_protocol(review_id)["protocol"]
+        eligibility = read_json(out("automatic_eligibility.json"), {})
+        primary = [
+            r
+            for r in records
+            if r.get("claims")
+            and eligibility.get(r["paper_id"], {}).get("recommendation") == "include"
+        ]
         scientific = review_manuscript(
-            protocol, records, out("automatic_review.md").read_text()
+            protocol,
+            primary,
+            out("automatic_review.md").read_text(),
+            writing=read_json(out("scientific_manuscript.json"), {}),
+            checkpoint_path=out("scientific_critic_progress.json"),
         )
         write_json(out("scientific_quality.json"), scientific)
         if not scientific["completed"]:

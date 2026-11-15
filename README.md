@@ -1019,7 +1019,7 @@ Among the seven human-resolved records, three system decisions matched a definit
 
 The [human screening sample](evaluation/xai_human_screening_sample.json) contains the actual researcher labels, machine predictions, unresolved cases, calculated results and sampling limitations. No per-record measured duration was invented from the approximate timing estimates. Citation accuracy, extraction accuracy and required-field completeness remain unassessed until the source text is checked separately.
 
-The [case-study results file](evaluation/xai_case_study_results.json) records these counts, metric values, configuration and input-file hashes. Unmeasured human-reference metrics are explicitly `null`. The software verification run contains **131 backend tests: 130 passed and 1 skipped**, plus **24 passing frontend tests**. Python lint checks and the frontend production build also passed. The build reports a bundle-size advisory. These checks demonstrate software behavior under the tested conditions; they do not establish the scientific accuracy of the XAI review.
+The [case-study results file](evaluation/xai_case_study_results.json) records these counts, metric values, configuration and input-file hashes. Unmeasured human-reference metrics are explicitly `null`. The software verification run contains **137 backend tests: 136 passed and 1 skipped**, plus **24 passing frontend tests**. Python lint checks and the frontend production build also passed. The build reports a bundle-size advisory. These checks demonstrate software behavior under the tested conditions; they do not establish the scientific accuracy of the XAI review.
 
 #### Coverage of the project requirements
 

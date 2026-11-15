@@ -146,7 +146,10 @@ def main():
         write_json(
             args.directory / "scientific_quality.json",
             review_manuscript(
-                protocol.model_dump(mode="json"), records, report_path.read_text()
+                protocol.model_dump(mode="json"),
+                records,
+                report_path.read_text(),
+                writing=read_json(root / "outputs/scientific_manuscript.json", {}),
             ),
         )
     changed = [
