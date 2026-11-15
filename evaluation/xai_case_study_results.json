@@ -1,6 +1,6 @@
 {
   "review_id": "explainable_ai_in_ids_socs_f18d0395",
-  "recorded_at_utc": "2026-11-15T17:39:53.120656+00:00",
+  "recorded_at_utc": "2026-11-15T20:54:14.855838+00:00",
   "run_complete": false,
   "scope": "Observed machine results and researcher thematic title/abstract assessment of nine records: seven definitive labels and two unresolved cases. Human citation/extraction correctness and controlled time savings have not been established. The search is bounded.",
   "configuration": {
@@ -69,8 +69,8 @@
   },
   "software_checks": {
     "backend": {
-      "tests_run": 137,
-      "passed": 136,
+      "tests_run": 142,
+      "passed": 141,
       "skipped": 1,
       "failed": 0
     },
@@ -89,9 +89,9 @@
     "outputs/automatic_eligibility.json": "6171d0e3e4e51c3021c85a5529a5c6bbf814a456982a424413c3b73081a2721c"
   },
   "still_required": [
-    "Complete and source-check the XAI manuscript and exports",
+    "Researcher review of the generated manuscript and unresolved scientific-critic checks",
     "Verify source citations, extraction and required fields; record comparable measured manual task times",
-    "Add the final PRISMA figure and manuscript example to the README",
+    "Resolve the two human-uncertain screening labels if possible; do not infer their answers",
     "Submit the researcher-recorded video of no more than three minutes"
   ],
   "human_reference": {
@@ -120,5 +120,34 @@
       }
     ],
     "timing_comparison_validated": false
+  },
+  "automated_execution_finished": true,
+  "manuscript_export_complete": true,
+  "status": "awaiting_final_researcher_review",
+  "completion_note": "The scientific draft and exports are complete. Final human acceptance and unresolved machine criticism remain open; run_complete is not a scientific-validation claim.",
+  "manuscript": {
+    "generated_sections": 5,
+    "sections_passed_implemented_checks": 5,
+    "results_paragraphs": 21,
+    "primary_reports": 21,
+    "unresolved_eligibility_reports": 16,
+    "abstract_findings_words": 142,
+    "actual_word_content_checked": true,
+    "api_download_checked": true,
+    "human_final_acceptance": false,
+    "example_directory": "examples/xai-ids"
+  },
+  "scientific_critic": {
+    "version": "located-scientific-critic-v3",
+    "completed": false,
+    "passed": false,
+    "located_findings": 5,
+    "unresolved_checks": 15
+  },
+  "export_sha256": {
+    "automatic_review.md": "bce454982069ac6df2312c6958010a3700bc6f41fcb9c693075486962239ec0c",
+    "automatic_review.docx": "9654de3b77425856ec99b93bc1fe06cc85c369bf8525166ca6b039d58b758166",
+    "prisma_flow.svg": "4224ac4eba64f9efe00c4263e4829edcae7d2a1425caf79b9ec41ada7eecd84e",
+    "references.bib": "1ef1fcc4e7f265dff21f53e128e02f2fc82b79d8ef4a64db22bb7019321fd680"
   }
 }

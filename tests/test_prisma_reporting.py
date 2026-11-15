@@ -9,7 +9,11 @@ import test_automatic_mode as fixtures
 from pydantic import ValidationError
 
 from api.app import RunConfiguration
-from methodology.automatic_reporting import MARKER, automatic_flow
+from methodology.automatic_reporting import (
+    MARKER,
+    automatic_flow,
+    export_automatic_reporting,
+)
 from methodology.protocol import draft_protocol, load_protocol
 from methodology.reporting import review_checklist_item
 from methodology.runtime import save_configuration, settings, year_bounds
@@ -201,6 +205,56 @@ class PrismaReportingTests(unittest.TestCase):
         self.assertIn(
             "Without usable extraction", (self.out / "prisma_flow.svg").read_text()
         )
+
+    def test_empty_provisional_extraction_does_not_discard_verified_manuscript(self):
+        from writer_fixtures import audited_writing
+
+        self.case.run_automatic()
+        papers = read_json(self.root / "papers.json", [])
+        papers.append({**papers[0], "id": "W2", "screening": {"decision": "uncertain"}})
+        write_json(self.root / "papers.json", papers)
+        records = read_json(self.out / "evidence.json", [])
+        records.append(
+            {
+                "paper_id": "W2",
+                "claims": [],
+                "extraction_complete": True,
+                "grounding_status": "no_verified_quotes",
+            }
+        )
+        write_json(self.out / "evidence.json", records)
+        write_json(
+            self.out / "automatic_eligibility.json",
+            {
+                "W1": {"recommendation": "include"},
+                "W2": {"recommendation": "uncertain"},
+            },
+        )
+        write_json(
+            self.out / "full_text.json",
+            [{"paper_id": pid, "status": "retrieved"} for pid in ("W1", "W2")],
+        )
+        binding = [
+            {
+                **record,
+                "eligibility_status": "include"
+                if record["paper_id"] == "W1"
+                else "uncertain",
+            }
+            for record in records
+        ]
+        writing = audited_writing(
+            "fixture", load_protocol("fixture")["protocol"], binding
+        )
+        write_json(self.out / "scientific_manuscript.json", writing)
+        export_automatic_reporting("fixture")
+        report = (self.out / "automatic_review.md").read_text()
+        self.assertIn("We evaluated twelve samples.", report)
+        self.assertNotIn("A verified abstract narrative is not yet available", report)
+        self.assertIn("1 reports remained provisional", report)
+        flow = read_json(self.out / "prisma_flow.json", {})
+        self.assertEqual(flow["reports_in_synthesis"], 1)
+        self.assertEqual(flow["reports_retained_without_usable_extraction"], 1)
 
     def test_missing_provenance_is_unknown_and_flow_tampering_invalidates_result(self):
         self.case.run_automatic()

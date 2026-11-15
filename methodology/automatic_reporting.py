@@ -240,7 +240,20 @@ def export_automatic_reporting(review_id, manuscript=None):
     from agents.writing_agent import writing_packet
 
     writing = read_json(out / "scientific_manuscript.json", {})
-    packet = writing_packet(review_id, protocol, records, mode="automatic")
+    # Bind to the same complete extraction snapshot used by the writer. Empty
+    # provisional extractions affect its pending list, even though they cannot
+    # contribute usable evidence to the flow diagram or scientific tables.
+    binding_records = [
+        {
+            **record,
+            "eligibility_status": proposals.get(record["paper_id"], {}).get(
+                "recommendation", "uncertain"
+            ),
+        }
+        for record in read_json(out / "evidence.json", [])
+        if "error" not in record
+    ]
+    packet = writing_packet(review_id, protocol, binding_records, mode="automatic")
     if writing.get("input_fingerprint") != packet["input_fingerprint"]:
         writing = None
     manuscript = build_manuscript(

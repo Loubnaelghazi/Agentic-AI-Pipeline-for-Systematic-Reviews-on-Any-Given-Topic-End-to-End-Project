@@ -558,6 +558,45 @@ class ScientificWritingTests(unittest.TestCase):
             saved_section_valid(value["sections"]["results"], facts, "results")
         )
 
+    def test_abstract_short_aliases_map_back_to_exact_existing_facts(self):
+        from agents.writing_agent import AbstractDraft, draft_section
+
+        client = Mock()
+        client.with_structured_output.return_value.invoke.return_value = AbstractDraft(
+            paragraphs=[
+                {
+                    "text": "The model achieved an F1 of 0.80 on the test dataset.",
+                    "evidence_ids": ["E1"],
+                }
+            ]
+        )
+        with patch("agents.writing_agent.chat_model", return_value=client):
+            draft = draft_section("abstract", self.packet["facts"], self.packet, [])
+        self.assertEqual(draft.paragraphs[0].evidence_ids, [self.key])
+        prompt = client.with_structured_output.return_value.invoke.call_args.args[0]
+        self.assertNotIn(self.key, prompt)
+
+    def test_abstract_alias_not_present_in_packet_cannot_authorize_a_citation(self):
+        from agents.writing_agent import AbstractDraft, draft_section
+
+        client = Mock()
+        client.with_structured_output.return_value.invoke.return_value = AbstractDraft(
+            paragraphs=[
+                {
+                    "text": "The model achieved an F1 of 0.80 on the test dataset.",
+                    "evidence_ids": ["E2"],
+                }
+            ]
+        )
+        with (
+            patch("agents.writing_agent.chat_model", return_value=client),
+            self.assertRaisesRegex(ValueError, "outside"),
+        ):
+            draft_section("abstract", self.packet["facts"], self.packet, [])
+        self.assertEqual(
+            client.with_structured_output.return_value.invoke.call_count, 2
+        )
+
     def test_results_cannot_silently_drop_a_study_with_primary_findings(self):
         value = audited_writing("fixture", self.protocol, [self.record])
         facts = {

@@ -900,7 +900,7 @@ The academic evaluation addresses completeness, accuracy, inter-agent consistenc
 
 This case study follows a real review from the research question to the generated manuscript. It tests whether the agents can search, select, read and organize scientific evidence in one saved workflow.
 
-**Status recorded on 15 November 2026:** search, title/abstract screening, full-text screening, RAG indexing, evidence extraction and machine appraisal are complete. Scientific writing is in progress; sections that fail format or source checks require repair. The final manuscript, final PRISMA figure and human-reference evaluation are not yet available for this run. The tables below describe observed processing, not a completed systematic review.
+**Status recorded on 15 November 2026:** the automatic workflow has produced the scientific manuscript, a separate technical report, tables, references and the selection diagram. All five generated narrative sections passed the implemented paragraph and citation checks. The exported Word file was inspected to confirm that those sections are actually present. Nine human title/abstract assessments are recorded below. Scientific criticism still has unresolved checks, and the manuscript has not received final researcher acceptance; it is an AI-generated draft for scientific review.
 
 #### Research question and configuration
 
@@ -978,9 +978,9 @@ One concrete exclusion is *Development of machine learning models to identify po
 | RAG indexing | Split text into passages and build the retrieval index | 1,959 indexed passages |
 | Evidence extraction | Collect findings and source passages; check evidence support | 37 extraction records saved; 36 contain retained quotations and one contains no verified quotation |
 | Study appraisal | Propose domain judgements under the configured project rubric | 37 machine appraisal records saved; not a validated risk-of-bias assessment |
-| Synthesis and writing | Compare evidence and draft the scientific sections, tables and references | In progress; verified sections are retained while missing or rejected sections are repaired |
-| Quality checks and export | Check the draft and export the manuscript, technical report and PRISMA artifacts | Pending for this run |
-| Researcher review | Inspect the final draft and independently verify a reference sample | Pending |
+| Synthesis and writing | Compare evidence and draft the scientific sections, tables and references | Five source-audited narrative sections exported; results cover the 21 include-recommended reports |
+| Quality checks and export | Check the draft and export the manuscript, technical report and PRISMA artifacts | Word, Markdown, tables, references and diagram exported; unresolved criticism is disclosed in the technical report |
+| Researcher review | Inspect the final draft and independently verify a reference sample | Nine title/abstract assessments recorded; final manuscript and source-content assessment pending |
 
 Uncertain reports remain provisional. Their findings require particular attention during final review and must not be presented as confirmed eligible studies. A completed extraction without a verified quotation is an evidence gap, not a source of scientific conclusions or a scientific exclusion. When interpreting survey articles, results discussed from other authors must also be distinguished from the survey's own contribution; matching a quotation alone cannot guarantee correct attribution.
 
@@ -997,7 +997,7 @@ Uncertain reports remain provisional. Their findings require particular attentio
 | Screening scores on the 7 human-resolved records | Precision **100% (3/3)**; recall **50% (3/6)**; F1 **66.7%**; strict accuracy **42.9% (3/7)** | Four system decisions were uncertain within this subset; strict scoring counts these abstentions as incorrect. Scores are conditional on the human-resolved subset of a small non-representative sample |
 | Citation, extraction and completeness ratings | Human assessment pending | Require reading the source passages and checking the extracted content |
 | Time savings versus manual work | Not established | Researcher estimated approximately 2 minutes for the initial three records and approximately 40 seconds for the first additional record only. Other human durations are missing; no measured total baseline or validated saving percentage is claimed |
-| End-to-end manuscript quality | Assessment pending | Requires the completed manuscript and final source checks |
+| Manuscript generation and export | **5/5 narrative sections**, 21 reports in the primary synthesis, 142-word findings narrative in the structured abstract | Word content and native tables were inspected. Source checks and export completion do not establish overall scientific quality; human assessment and unresolved criticism remain |
 
 These preliminary measurements demonstrate recorded processing and expose unresolved cases. They do not establish exhaustive coverage, validated risk-of-bias assessment or a proven reduction in manual effort. The metric definitions and evaluation commands below explain how to complete the remaining measurements.
 
@@ -1019,19 +1019,19 @@ Among the seven human-resolved records, three system decisions matched a definit
 
 The [human screening sample](evaluation/xai_human_screening_sample.json) contains the actual researcher labels, machine predictions, unresolved cases, calculated results and sampling limitations. No per-record measured duration was invented from the approximate timing estimates. Citation accuracy, extraction accuracy and required-field completeness remain unassessed until the source text is checked separately.
 
-The [case-study results file](evaluation/xai_case_study_results.json) records these counts, metric values, configuration and input-file hashes. Unmeasured human-reference metrics are explicitly `null`. The software verification run contains **137 backend tests: 136 passed and 1 skipped**, plus **24 passing frontend tests**. Python lint checks and the frontend production build also passed. The build reports a bundle-size advisory. These checks demonstrate software behavior under the tested conditions; they do not establish the scientific accuracy of the XAI review.
+The [case-study results file](evaluation/xai_case_study_results.json) records these counts, metric values, configuration and input-file hashes. Unmeasured human-reference metrics are explicitly `null`. The software verification run contains **142 backend tests: 141 passed and 1 skipped**, plus **24 passing frontend tests**. Python lint checks and the frontend production build also passed. The build reports a bundle-size advisory. These checks demonstrate software behavior under the tested conditions; they do not establish the scientific accuracy of the XAI review.
 
 #### Coverage of the project requirements
 
 | Requirement from the project brief | Implementation and available evidence | What remains to demonstrate |
 | --- | --- | --- |
-| Modular multi-agent orchestration | Specialized LangChain roles; LangGraph for Guided mode and a shared-stage runner for automatic execution; Sections 3–5 | Complete final XAI writing and review |
+| Modular multi-agent orchestration | Specialized LangChain roles; LangGraph for Guided mode and a shared-stage runner for automatic execution; Sections 3–5 | Final researcher review of the exported XAI draft |
 | Configurable protocol and search | Versioned criteria, source-specific queries, dates and source limits; Section 12 case-study protocol | Researcher verification of methodological suitability and search coverage |
 | Multi-source retrieval and deduplication | OpenAlex, PubMed and arXiv; 61 records before deduplication and 51 unique records | Search exhaustiveness is not established by this bounded test |
 | Title/abstract and full-text screening | Two simulated reviewer roles, source-linked full-text proposals and recorded rationales; nine human assessments, seven definitive labels and strict subset scores | Resolve two human uncertainties; broader reference sample and human full-text assessment |
 | Hybrid RAG, reranking and compression | Dense/sparse fusion, optional model reranking and bounded source passages; Section 6 | Reranking produced invalid IDs in this run and used the logged hybrid fallback; its relevance benefit has not been demonstrated |
 | Extraction and study appraisal | 37 extraction records and 37 machine appraisal records, with explicit evidence gaps | Human checks of extracted information; the project rubric is not a validated risk-of-bias instrument |
-| Synthesis, manuscript and PRISMA exports | Scientific writer, separate technical report, diagram generation and Markdown/DOCX/BibTeX utilities; Sections 10–11 | Final XAI manuscript, PRISMA artifacts and export inspection |
+| Synthesis, manuscript and PRISMA exports | Scientific writer, separate technical report, diagram generation and Markdown/DOCX/BibTeX utilities; Sections 10–11 | Manuscript and selection artifacts are linked below; scientific interpretation remains subject to researcher review |
 | Human oversight | Guided decision gates and automatic-mode final draft acceptance; no fabricated intermediate approvals | Record actual researcher judgements; an automatic case study does not demonstrate every Guided interaction |
 | Memory, versioning and observability | Saved workflow state, protocol history, decision traces, source passages and resumable checkpoints | Repeated source verification and model retries remain a performance limitation |
 | Quantitative synthesis where applicable | Optional verified-estimate preparation and pooling utility | No meta-analysis claimed: compatible verified estimates and a comparability assessment are required |
@@ -1039,7 +1039,7 @@ The [case-study results file](evaluation/xai_case_study_results.json) records th
 | Source code, technical report and user guide | GitHub repository, this README, Docker setup, architecture diagrams and screenshots | Keep the final case-study results synchronized with the completed run |
 | Video demonstration of at most three minutes | Prepared separately by the researcher | Record and submit the video |
 
-**Submission status:** implementation and documentation are available, but the XAI end-to-end result and human-reference evaluation are still incomplete. Available software tests, source matching and model-role agreement must not be presented as proof that all success criteria have been met.
+**Submission status:** implementation, documentation, the exported XAI example and a small human screening reference sample are available. Final researcher acceptance, unresolved scientific-critic checks, human citation/extraction/completeness assessment and a controlled manual timing comparison remain open. Available software tests, source matching and model-role agreement must not be presented as proof that all success criteria have been met.
 
 #### Case study screenshots
 
@@ -1067,9 +1067,17 @@ The **Papers & PDFs** panel lets the researcher search publications by title or 
 
 *Figure 12. PRISMA-oriented selection flow for the automatic XAI/IDS case study. Counts describe bibliographic records and reports, not confirmed independent studies. The diagram is exported separately for readability; its [count data](assets/figures/xai-selection-counts.json) and [PNG version](assets/figures/xai-selection-flow.png) are available.*
 
-The sources returned **61 records**. Removing **10 duplicates** left **51** for title/abstract screening. Full texts were retrieved for **38** reports; **13** remained unavailable. Full-text assessment produced **21 include recommendations**, **16 uncertain cases** and **1 exclusion**. The uncertain cases were retained provisionally. Of the **37 reports processed for extraction**, **36 contain retained source quotations** and **one contains no verified quotation**. The last two boxes keep this evidence gap separate from scientific exclusions. The diagram does not certify PRISMA compliance, human validation or completion of scientific writing.
+The sources returned **61 records**. Removing **10 duplicates** left **51** for title/abstract screening. Full texts were retrieved for **38** reports; **13** remained unavailable. Full-text assessment produced **21 include recommendations**, **16 uncertain cases** and **1 exclusion**. The uncertain cases were retained provisionally. Of the **37 reports processed for extraction**, **36 contain retained source quotations** and **one contains no verified quotation**. The last two boxes keep this evidence gap separate from scientific exclusions. The diagram does not certify PRISMA compliance or human validation. The completed manuscript export is linked below.
 
-A manuscript excerpt will be added after writing and verification finish. A separate video of no more than three minutes will demonstrate the workflow and its outputs. These illustrations complement the numerical results and human reference checks.
+#### Exported XAI manuscript
+
+Read the [scientific manuscript in Markdown](examples/xai-ids/automatic_review.md) or download its [Word version](examples/xai-ids/automatic_review.docx). The example also includes [BibTeX references](examples/xai-ids/references.bib) and the [selection diagram](examples/xai-ids/prisma_flow.svg).
+
+The manuscript contains a structured abstract, introduction, methods, results, study tables, discussion, limitations, conclusion and references. The five generated narrative sections passed the implemented source audits. The Word export contains native tables and an embedded figure; its actual text was checked against the saved scientific sections. Only the **21 include-recommended reports** support the primary conclusions. The **16 unresolved reports** are reported separately; one retained report has no usable extraction.
+
+**How to inspect this example:** read the selection counts, compare a result paragraph and its citation with the original source in the local application, then inspect the separate technical report for processing details and unresolved quality findings. The source-specific automated critic did not complete every comparison. This example is therefore an **AI-generated draft awaiting scientific review**, not a researcher-approved or publication-ready systematic review. Original source PDFs and local processing records are not distributed with the example.
+
+A separate video of no more than three minutes, recorded by the researcher, demonstrates the workflow and its outputs. These illustrations complement the numerical results and human reference checks.
 
 ### Metric definitions
 

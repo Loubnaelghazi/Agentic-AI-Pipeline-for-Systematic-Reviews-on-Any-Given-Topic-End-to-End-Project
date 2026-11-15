@@ -110,6 +110,9 @@ def build_manuscript(
     provisional = [
         r for r in evidence if r.get("eligibility_status") not in ("include", "exclude")
     ]
+    unresolved = flow.get("eligibility_uncertain")
+    if unresolved is None:
+        unresolved = len(provisional)
     if not included:
         writing = None
     scientific = {
@@ -147,9 +150,9 @@ def build_manuscript(
         limitations.append(
             f"Full texts were unavailable for {count(flow['reports_not_retrieved'])} sought reports, which may affect the coverage of the synthesis."
         )
-    if provisional:
+    if unresolved:
         limitations.append(
-            f"Eligibility remained unresolved for {len(provisional)} reports; these were not used to support the primary conclusions."
+            f"Eligibility remained unresolved for {unresolved} reports; these were not used to support the primary conclusions."
         )
     if mode == "automatic":
         limitations.append(
@@ -163,8 +166,8 @@ def build_manuscript(
         f"**Methods:** Literature searches covered {sources} ({dates}). Records were deduplicated, screened against prespecified criteria and assessed in full text. Findings were synthesised narratively; no meta-analysis was performed.",
         f"**Results:** {count(flow.get('records_identified'))} records were identified, {count(flow.get('reports_retrieved'))} full texts were retrieved, and {len(included)} reports contributed to the primary synthesis."
         + (
-            f" {len(provisional)} reports remained provisional and were not used for primary conclusions."
-            if provisional
+            f" {unresolved} reports remained provisional and were not used for primary conclusions."
+            if unresolved
             else ""
         ),
         "**Scientific findings:** "

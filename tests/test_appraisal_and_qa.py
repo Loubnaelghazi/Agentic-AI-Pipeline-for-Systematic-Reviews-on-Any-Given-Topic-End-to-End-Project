@@ -10,7 +10,8 @@ from agents.appraisal_agent import (
     validate_proposal,
 )
 from agents.scientific_qa import (
-    Criticism,
+    SourceReview,
+    bind_review,
     locate_findings,
     review_manuscript,
     study_excerpt,
@@ -115,6 +116,31 @@ class SourceAppraisalTests(unittest.TestCase):
 
 
 class LocatedCriticTests(unittest.TestCase):
+    def test_critic_quotes_are_copied_from_existing_identifiers(self):
+        verdict = SourceReview(
+            concern="contradiction",
+            manuscript_id="M1",
+            source_id="S1",
+            reason="The numeric values differ",
+        )
+        value = bind_review(
+            verdict,
+            {"M1": "Accuracy was 90 percent."},
+            {"S1": "Accuracy was 80 percent."},
+        )
+        self.assertEqual(value[0]["manuscript_quote"], "Accuracy was 90 percent.")
+        self.assertEqual(value[0]["evidence_quote"], "Accuracy was 80 percent.")
+        with self.assertRaisesRegex(ValueError, "unknown source"):
+            bind_review(verdict, {"M1": "Accuracy was 90 percent."}, {})
+
+    def test_uncertain_critic_never_becomes_a_clean_pass(self):
+        with self.assertRaisesRegex(ValueError, "could not resolve"):
+            bind_review(
+                SourceReview(concern="uncertain", reason="Evidence is ambiguous"),
+                {},
+                {},
+            )
+
     def test_study_excerpt_does_not_mix_publications_or_joint_paragraphs(self):
         writing = {
             "facts": {"W1:Q1": {"paper_id": "W1"}, "W2:Q1": {"paper_id": "W2"}},
@@ -162,8 +188,8 @@ class LocatedCriticTests(unittest.TestCase):
             ]
         ]
         client = MagicMock()
-        client.with_structured_output.return_value.invoke.return_value = Criticism(
-            findings=[]
+        client.with_structured_output.return_value.invoke.return_value = SourceReview(
+            concern="none", reason="All supplied statements agree"
         )
         with patch("agents.scientific_qa.chat_model", return_value=client):
             value = review_manuscript(
@@ -205,7 +231,18 @@ class LocatedCriticTests(unittest.TestCase):
             "offline"
         )
         with patch("agents.scientific_qa.chat_model", return_value=client):
-            result = review_manuscript({}, [{"paper_id": "W1", "claims": []}], "Draft")
+            result = review_manuscript(
+                {},
+                [
+                    {
+                        "paper_id": "W1",
+                        "claims": [
+                            {"kind": "main_findings", "quote": "Source result."}
+                        ],
+                    }
+                ],
+                "Draft",
+            )
         self.assertFalse(result["completed"])
         self.assertFalse(result["passed"])
         self.assertTrue(result["failures"])
