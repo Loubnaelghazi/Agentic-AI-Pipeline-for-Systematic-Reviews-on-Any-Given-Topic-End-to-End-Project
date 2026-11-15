@@ -1,4 +1,4 @@
-# Folio — Agentic AI for Systematic Literature Reviews
+# Folio : Agentic AI for Systematic Literature Reviews
 
 **From a research question to a source-linked scientific manuscript.**
 
@@ -1099,41 +1099,6 @@ For screening, an included paper is the positive class:
 Undefined metrics are reported as `null`, not invented zeroes. Each rating rate is accompanied by its number of rated samples. Inter-agent agreement is not independent human agreement.
 
 **Completeness has two levels.** Extraction completeness asks whether required information was recovered from the reviewed papers. Search completeness asks whether relevant papers were found at all. Recall within the system's own retrieved sample does not establish search completeness. A search evaluation needs an independently assembled reference set or a documented manual search.
-
-### Prepare and evaluate a human reference sample
-
-Use a new output directory for each evaluation. Replace `REVIEW_ID` with the identifier of a completed review. The commands below use the running backend container so that they share its configuration and saved data.
-
-```bash
-docker compose exec backend python -m evaluation.prepare \
-  REVIEW_ID /data/evaluations/sample-01
-```
-
-This creates files in the host directory `data/evaluations/sample-01/`:
-
-| File | Contents |
-| --- | --- |
-| `labels.json` | Blank human decisions, reviewer names, timings, and correctness ratings |
-| `predictions.json` | System screening decisions, simulated reviewer decisions, and recorded timings |
-| `reference_material.json` | Protocol, paper metadata, source evidence, and annotation instructions |
-
-Evaluation procedure:
-
-1. Read the protocol and define the task scope before looking at system decisions.
-2. Read each title/abstract and record a human `include` or `exclude` label and reviewer name.
-3. Measure actual manual screening time for the same records.
-4. For accessible full texts, check the cited evidence, extracted results, and required fields. Record `true`, `false`, or leave an unassessed rating `null`.
-5. Keep full-text verification time separate from a title/abstract screening time comparison.
-6. Run the benchmark after completing the reference labels.
-
-```bash
-docker compose exec backend python -m evaluation.benchmark \
-  /data/evaluations/sample-01/labels.json \
-  /data/evaluations/sample-01/predictions.json \
-  /data/evaluations/sample-01/results.json
-```
-
-The benchmark rejects missing human screening labels and mismatched sample identifiers. Missing timings leave time savings unknown. Report the question, protocol, sample size, sources, model, hardware, and annotation method alongside every result.
 
 ## 13. Repository structure
 
