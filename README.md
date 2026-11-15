@@ -970,11 +970,27 @@ Uncertain reports remain provisional. Their findings require particular attentio
 
 These preliminary measurements demonstrate recorded processing and expose unresolved cases. They do not establish exhaustive coverage, validated risk-of-bias assessment or a proven reduction in manual effort. The metric definitions and evaluation commands below explain how to complete the remaining measurements.
 
-#### Report illustrations and final demonstration
+#### Case study screenshots
 
-The report will use a small set of readable figures with explanatory captions: the protocol and criteria, an example screening decision, access to the original PDFs, and the final PRISMA diagram and manuscript table. The current PDF panel displays **38 available PDFs out of 51 records**; this is an access count, not the final inclusion count.
+The following screenshots were captured by the researcher during the XAI/IDS review. They show two different moments of the same automatic workflow. They document the user experience; the saved protocol, decisions and source records provide the detailed evaluation evidence.
 
-Final screenshots, a manuscript excerpt and the completed-run results will be added after writing and verification finish. A separate video of no more than three minutes will demonstrate the saved workflow and its outputs. Screenshots and video illustrate the evaluation; they do not replace the numerical results or human reference checks.
+**Automatic full-text screening**
+
+![Automatic XAI/IDS review showing the current article and full-text eligibility assessment](assets/screenshots/xai-ids-automatic-screening.png)
+
+*Figure 8. Automatic full-text screening during the XAI/IDS case study. The workspace displays the research topic, the local Qwen3.5 4B model and the title of the article being assessed.*
+
+The progress card identifies the current activity: checking the eligibility of an article from its full text. The displayed section counter refers to processing within that article, not to the total number of articles in the review. **Pause** allows the researcher to request a stop at a saved checkpoint, while **Live log** provides execution details. In this mode, intermediate decisions are machine proposals and the researcher reviews the final draft. The screenshot records an earlier screening step; it does not represent the latest run status or a completed review. Its elapsed time is not the total duration across pauses and resumed runs.
+
+**Access to original publications**
+
+![Papers and original PDFs panel showing 38 available full texts out of 51 records](assets/screenshots/xai-ids-original-pdfs.png)
+
+*Figure 9. Retrieved publications and original PDF access. At this point, 38 of the 51 bibliographic records have a saved original PDF.*
+
+The **Papers & PDFs** panel lets the researcher search publications by title or year, inspect authors and publication dates, open a saved original PDF, and follow the source record. Unavailable PDFs are explicitly identified rather than silently removed. This supports source checking and helps distinguish an access problem from a scientific exclusion. **38 available PDFs does not mean 38 included studies**: eligibility is assessed separately, and some reports remain uncertain or are excluded.
+
+The final PRISMA diagram and a manuscript excerpt will be added after writing and verification finish. A separate video of no more than three minutes will demonstrate the workflow and its outputs. These illustrations complement the numerical results and human reference checks.
 
 ### Metric definitions
 
