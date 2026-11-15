@@ -1,4 +1,4 @@
-# Folio — Agentic AI for Systematic Literature Reviews
+# Folio : Agentic AI for Systematic Literature Reviews
 
 **From a research question to a source-linked scientific manuscript.**
 
